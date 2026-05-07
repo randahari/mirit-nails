@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#fdf6f0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -38,7 +38,10 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 
 /* ===== Screens ===== */
 .screen{
-  position:fixed;inset:0;
+  position:fixed;
+  top:0;left:0;right:0;
+  height:100vh;
+  height:calc(var(--vh, 1vh) * 100);
   overflow-y:auto;overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
   background:linear-gradient(160deg,#f3e3d4 0%,#fdf6f0 55%,#e8d9c6 100%);
@@ -107,7 +110,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
   border-top:1px solid var(--line);
   display:none;justify-content:space-around;
-  padding:8px 0 24px;z-index:100;
+  padding:8px 0 max(24px, env(safe-area-inset-bottom));z-index:100;
 }
 .bottom-nav.show{display:flex}
 .nav-item{
@@ -121,7 +124,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 /* ===== Sticky bottom action ===== */
 .sticky-bottom{
   position:sticky;bottom:0;left:0;right:0;
-  padding:16px 24px 32px;
+  padding:16px 24px max(32px, env(safe-area-inset-bottom));
   background:linear-gradient(180deg,rgba(253,246,240,0) 0%,var(--cream) 30%);
   margin-top:auto;z-index:50;flex-shrink:0;
 }
@@ -939,11 +942,11 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
       <div style="display:flex;gap:10px">
         <div style="flex:1">
           <label class="input-label">משעה</label>
-          <input type="time" id="block-from" class="input" style="padding:14px 16px" step="1800">
+          <select id="block-from" class="input" style="padding:14px 16px;appearance:auto"></select>
         </div>
         <div style="flex:1">
           <label class="input-label">עד שעה</label>
-          <input type="time" id="block-to" class="input" style="padding:14px 16px" step="1800">
+          <select id="block-to" class="input" style="padding:14px 16px;appearance:auto"></select>
         </div>
       </div>
       <div>
@@ -1105,6 +1108,16 @@ document.dispatchEvent(new Event('fbReady'));
 </script>
 
 <script>
+// ===== FIX: Viewport height on mobile (prevents keyboard shrink bug) =====
+(function(){
+  function setVH(){
+    document.documentElement.style.setProperty('--vh', window.innerHeight * 0.01 + 'px');
+  }
+  setVH();
+  // Only update on orientation change, NOT on resize (resize fires when keyboard opens)
+  window.addEventListener('orientationchange', function(){ setTimeout(setVH, 300); });
+})();
+
 // ===== STATE =====
 const state = {
   branch: null,
@@ -1183,13 +1196,13 @@ window.showToast = showToast;
 
 // ===== WAZE =====
 window.openWaze = function(address) {
-  window.open(`https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`, '_blank');
+  window.location.href = `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
 };
 
 
 function openWA(phone, msg) {
   const clean = phone.replace(/\D/g,'').replace(/^0/,'972');
-  window.open(`https://wa.me/${clean}?text=${encodeURIComponent(msg)}`, '_blank');
+  window.location.href = `https://wa.me/${clean}?text=${encodeURIComponent(msg)}`;
 }
 window.openWA = openWA;
 
@@ -1267,7 +1280,7 @@ window.addToCalendar = function(title, iso, dur) {
   const start = new Date(iso);
   const end = new Date(start.getTime() + dur*60000);
   const fmt = d => d.toISOString().replace(/-|:|\.\d+/g,'');
-  window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('תור - ' + title + ' - מירית')}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent('Mirit Professional Nail Care')}`,'_blank');
+  window.location.href = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('תור - ' + title + ' - מירית')}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent('Mirit Professional Nail Care')}`;
 };
 
 window.cancelAppt = async function(id) {
@@ -1543,27 +1556,33 @@ window.submitBooking = async function() {
           datetime_iso: dt.toISOString(),
           appointment_id: docRef.id
         })
-      }).catch(() => {});
+      }).catch(() => {}); // שגיאה שקטה — לא חוסמת את הלקוחה
     } catch(e) {}
 
     // Save customer data
     localStorage.setItem('customerData', JSON.stringify({ name, phone }));
 
-    // Build WA message and open immediately
+    // Send WhatsApp to Mirit via Green API
     const branch = state.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
     const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-    const msg = `היי מירית! 💅
-קבעתי תור דרך האפליקציה:
-
-👤 שם: ${name}
-📞 טלפון: ${phone}
-📍 סניף: ${branch}
-📅 תאריך: ${dateStr}
-⏰ שעה: ${timeStr}
-💅 טיפולים: ${state.services.join(' + ')}
-⏱ משך: ${state.totalDuration} דקות${booking.chips.length ? '\n📝 הערות: '+booking.chips.join(', ') : ''}${note ? '\n💬 '+note : ''}`;
-    openWA(MIRIT_WA, msg);
+    const E = {
+      nail:  '\uD83D\uDC85',
+      person:'\uD83D\uDC64',
+      phone: '\uD83D\uDCDE',
+      pin:   '\uD83D\uDCCD',
+      cal:   '\uD83D\uDCC5',
+      clock: '\u23F0',
+      timer: '\u23F1',
+      note:  '\uD83D\uDCDD',
+      msg:   '\uD83D\uDCAC',
+    };
+    const waMsg = `${E.nail} הזמנה חדשה!\n\n${E.person} שם: ${name}\n${E.phone} טלפון: ${phone}\n${E.pin} סניף: ${branch}\n${E.cal} תאריך: ${dateStr}\n${E.clock} שעה: ${timeStr}\n${E.nail} טיפולים: ${state.services.join(' + ')}\n${E.timer} משך: ${state.totalDuration} דקות${booking.chips.length ? '\n'+E.note+' הערות: '+booking.chips.join(', ') : ''}${note ? '\n'+E.msg+' '+note : ''}`;
+    fetch('https://7107.api.greenapi.com/waInstance7107612855/sendMessage/89672fbea0b24b868d2073e7b552ddeaedb3a882bfd441caa6', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: '972504488463@c.us', message: waMsg })
+    }).catch(() => {});
 
     // Show success screen
     const dateStrShort = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
@@ -1885,6 +1904,17 @@ window.showBlockModal = function() {
   // Set default date to today
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('block-date').value = today;
+  // Populate time selects with half-hour slots only
+  const slots = [];
+  for (let h = 8; h <= 20; h++) {
+    slots.push(String(h).padStart(2,'0') + ':00');
+    slots.push(String(h).padStart(2,'0') + ':30');
+  }
+  ['block-from','block-to'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">בחרי שעה</option>' +
+      slots.map(s => `<option value="${s}">${s}</option>`).join('');
+  });
 };
 window.closeBlockModal = function() {
   document.getElementById('block-modal').style.display = 'none';
