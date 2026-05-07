@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#fdf6f0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="מירית נייל קר">
+<title>Mirit Professional Nail Care</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --cream:#fdf6f0;
+  --cream-2:#f7ece0;
+  --rose-gold:#c9a47a;
+  --rose-gold-dark:#a8855e;
+  --rose-gold-light:#e4cfb5;
+  --gold:#b8935e;
+  --ink:#3d2f24;
+  --ink-soft:#6b5544;
+  --ink-mute:#9a8474;
+  --line:#e8d9c6;
+  --white:#ffffff;
+  --rose-blush:#f3e3d4;
+  --success:#7a9b6e;
+  --danger:#c47a7a;
+  --shadow-soft:0 4px 24px rgba(168,133,94,0.08);
+  --shadow-med:0 8px 32px rgba(168,133,94,0.12);
+  --shadow-lg:0 16px 48px rgba(168,133,94,0.18);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:var(--cream);color:var(--ink);font-size:15px;-webkit-font-smoothing:antialiased}
+.display{font-family:'Cormorant Garamond',serif;font-weight:500}
+
+/* ===== Screens ===== */
+.screen{
+  position:fixed;inset:0;
+  overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  background:linear-gradient(160deg,#f3e3d4 0%,#fdf6f0 55%,#e8d9c6 100%);
+  display:none;
+  flex-direction:column;
+}
+.screen.active{display:flex}
+.screen::-webkit-scrollbar{display:none}
+
+/* ===== Status bar ===== */
+.statusbar{
+  height:44px;display:flex;align-items:flex-end;
+  justify-content:space-between;padding:0 24px 8px;
+  font-size:13px;font-weight:600;
+  flex-shrink:0;
+  flex-direction:row-reverse;
+}
+.statusbar-time{color:var(--ink)}
+
+/* ===== Common ===== */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:18px;border:none;border-radius:18px;
+  font-family:'Heebo',sans-serif;font-size:16px;font-weight:500;
+  cursor:pointer;transition:all .25s ease;letter-spacing:0.02em;
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--rose-gold) 0%,var(--rose-gold-dark) 100%);
+  color:var(--white);box-shadow:var(--shadow-med);
+}
+.btn-primary:active{transform:scale(.98)}
+.btn-ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line)}
+.btn-danger{background:linear-gradient(135deg,#d4847a,#c47a7a);color:white}
+
+.input{
+  width:100%;padding:16px 20px;background:var(--white);
+  border:1px solid var(--line);border-radius:16px;
+  font-family:'Heebo',sans-serif;font-size:16px;color:var(--ink);
+  text-align:right;direction:rtl;transition:all .2s;
+}
+.input:focus{outline:none;border-color:var(--rose-gold);box-shadow:0 0 0 4px rgba(201,164,122,0.12)}
+.input-label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:8px;font-weight:500}
+
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:20px 0}
+
+.brand-header{text-align:center;padding:28px 24px 20px;position:relative}
+.brand-header::after{content:'';position:absolute;bottom:0;right:50%;transform:translateX(50%);width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--rose-gold),transparent)}
+.brand-name{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:500;color:var(--ink);letter-spacing:0.02em}
+.brand-tag{font-size:10px;color:var(--ink-mute);letter-spacing:0.4em;text-transform:uppercase;margin-top:4px}
+.brand-ornament{color:var(--rose-gold);font-size:16px;margin:6px 0;letter-spacing:0.5em}
+
+.section-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:500;padding:20px 24px 6px;color:var(--ink)}
+.section-sub{padding:0 24px 20px;font-size:13px;color:var(--ink-mute);line-height:1.5}
+
+.back-bar{
+  display:flex;align-items:center;gap:8px;padding:12px 24px 0;
+  color:var(--ink-soft);font-size:14px;font-weight:500;cursor:pointer;
+  flex-shrink:0;
+}
+.back-bar svg{transform:scaleX(-1)}
+
+/* ===== Bottom nav ===== */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(253,246,240,.95);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--line);
+  display:none;justify-content:space-around;
+  padding:8px 0 24px;z-index:100;
+}
+.bottom-nav.show{display:flex}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 16px;color:var(--ink-mute);font-size:10px;cursor:pointer;flex:1;font-weight:500;
+}
+.nav-item.active{color:var(--rose-gold-dark)}
+.nav-item svg{opacity:.7}
+.nav-item.active svg{opacity:1}
+
+/* ===== Sticky bottom action ===== */
+.sticky-bottom{
+  position:sticky;bottom:0;left:0;right:0;
+  padding:16px 24px 32px;
+  background:linear-gradient(180deg,rgba(253,246,240,0) 0%,var(--cream) 30%);
+  margin-top:auto;z-index:50;flex-shrink:0;
+}
+
+/* ===== WhatsApp button ===== */
+.wa-btn{
+  display:flex;align-items:center;gap:12px;padding:14px 18px;
+  background:linear-gradient(135deg,rgba(255,255,255,0.9),rgba(243,227,212,0.6));
+  border:1px solid var(--rose-gold-light);border-radius:16px;
+  color:var(--ink);text-decoration:none;box-shadow:var(--shadow-soft);
+  cursor:pointer;transition:all .25s ease;width:100%;
+}
+.wa-btn:active{transform:scale(.98)}
+.wa-icon{
+  width:38px;height:38px;border-radius:12px;
+  background:linear-gradient(135deg,var(--rose-gold-light),var(--rose-gold));
+  display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0;
+}
+.wa-content{flex:1;text-align:right}
+.wa-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:500;color:var(--ink);line-height:1.2}
+.wa-sub{font-size:11px;color:var(--ink-mute);margin-top:2px;letter-spacing:0.05em}
+
+/* ===== Loading overlay ===== */
+#loading{
+  position:fixed;inset:0;background:var(--cream);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:999;
+}
+.loading-logo{font-family:'Cormorant Garamond',serif;font-size:52px;color:var(--rose-gold-dark);margin-bottom:8px}
+.loading-tag{font-size:11px;color:var(--ink-mute);letter-spacing:0.3em;text-transform:uppercase}
+.loading-dot{
+  width:6px;height:6px;background:var(--rose-gold);border-radius:50%;
+  margin-top:30px;animation:pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
+
+/* ===== Toast ===== */
+#toast{
+  position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-20px);
+  background:var(--ink);color:white;padding:10px 20px;border-radius:12px;
+  font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:all .3s;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ===== SCREEN: INSTALL ===== */
+.install-hero{text-align:center;padding:30px 24px 20px}
+.install-illustration{
+  width:110px;height:110px;margin:0 auto 20px;border-radius:28px;
+  background:linear-gradient(135deg,var(--rose-gold) 0%,var(--rose-gold-dark) 100%);
+  display:flex;align-items:center;justify-content:center;color:white;
+  box-shadow:0 20px 50px rgba(168,133,94,0.35);font-family:'Cormorant Garamond',serif;
+  font-size:50px;font-weight:500;
+}
+.install-step{
+  background:var(--white);border:1px solid var(--line);border-radius:18px;
+  padding:18px;margin-bottom:12px;display:flex;gap:14px;
+  align-items:flex-start;box-shadow:var(--shadow-soft);
+}
+.step-num{
+  width:32px;height:32px;border-radius:50%;
+  background:linear-gradient(135deg,var(--rose-blush),var(--rose-gold-light));
+  color:var(--rose-gold-dark);display:flex;align-items:center;justify-content:center;
+  font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;flex-shrink:0;margin-top:2px;
+}
+.step-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:500;color:var(--ink);margin-bottom:4px}
+.step-desc{font-size:13px;color:var(--ink-soft);line-height:1.5}
+
+/* ===== SCREEN: RETURNING CUSTOMER ===== */
+.welcome-greet{font-size:14px;color:var(--ink-mute);font-style:italic}
+.welcome-name{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:500;color:var(--ink);line-height:1;margin-top:4px}
+.next-appt-card{
+  margin:16px 24px 0;
+  background:linear-gradient(135deg,var(--rose-gold) 0%,var(--rose-gold-dark) 100%);
+  border-radius:24px;padding:22px;color:white;position:relative;overflow:hidden;
+}
+.next-appt-card::before{
+  content:'';position:absolute;top:-40px;left:-40px;
+  width:160px;height:160px;
+  background:radial-gradient(circle,rgba(255,255,255,0.15),transparent 70%);
+}
+.next-appt-label{font-size:11px;opacity:.8;letter-spacing:0.1em;text-transform:uppercase;position:relative}
+.next-appt-date{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;margin-top:10px;position:relative}
+.next-appt-time{font-family:'Cormorant Garamond',serif;font-size:44px;font-weight:300;line-height:1;position:relative}
+.next-appt-service{font-size:13px;opacity:.9;margin-top:6px;position:relative;line-height:1.5}
+.next-appt-divider{height:1px;background:rgba(255,255,255,0.25);margin:16px 0;position:relative}
+.appt-mini-actions{display:flex;gap:10px;position:relative}
+.appt-mini-btn{
+  flex:1;padding:10px;
+  background:rgba(255,255,255,0.18);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,0.25);border-radius:12px;
+  color:white;font-size:12px;font-weight:500;text-align:center;cursor:pointer;
+  font-family:'Heebo',sans-serif;
+}
+.no-appt-card{
+  margin:16px 24px 0;padding:20px;
+  background:var(--white);border:1px solid var(--line);border-radius:20px;
+  text-align:center;box-shadow:var(--shadow-soft);
+}
+.quick-actions{padding:20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.quick-card{
+  background:var(--white);border:1px solid var(--line);border-radius:18px;
+  padding:18px 14px;text-align:center;box-shadow:var(--shadow-soft);cursor:pointer;
+  transition:all .2s;
+}
+.quick-card:active{transform:scale(.97)}
+.quick-icon{
+  width:42px;height:42px;margin:0 auto 10px;border-radius:14px;
+  background:linear-gradient(135deg,var(--rose-blush),var(--rose-gold-light));
+  color:var(--rose-gold-dark);display:flex;align-items:center;justify-content:center;
+}
+.quick-title{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:500;color:var(--ink)}
+.quick-sub{font-size:11px;color:var(--ink-mute);margin-top:2px}
+
+/* ===== SCREEN: BRANCH SELECTION ===== */
+.branch-cards{display:flex;flex-direction:column;gap:14px;padding:0 24px}
+.branch-card{
+  background:var(--white);border:1px solid var(--line);border-radius:22px;
+  padding:22px;display:flex;align-items:center;gap:16px;
+  box-shadow:var(--shadow-soft);cursor:pointer;transition:all .25s ease;
+  position:relative;overflow:hidden;
+}
+.branch-card::before{
+  content:'';position:absolute;top:0;right:0;bottom:0;width:4px;
+  background:linear-gradient(180deg,var(--rose-gold-light),var(--rose-gold));
+}
+.branch-card:active{transform:scale(.98)}
+.branch-icon{
+  width:54px;height:54px;border-radius:16px;
+  background:linear-gradient(135deg,var(--rose-blush),var(--rose-gold-light));
+  display:flex;align-items:center;justify-content:center;color:var(--rose-gold-dark);flex-shrink:0;
+}
+.branch-info{flex:1;text-align:right}
+.branch-name{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--ink);font-weight:500}
+.branch-meta{font-size:12px;color:var(--ink-mute);margin-top:2px;line-height:1.5}
+.branch-arrow{color:var(--rose-gold);transform:rotate(180deg)}
+
+/* ===== SCREEN: SERVICE SELECTION ===== */
+.service-list{padding:0 24px;display:flex;flex-direction:column;gap:10px}
+.service-group-title{
+  font-size:11px;color:var(--ink-mute);letter-spacing:0.15em;text-transform:uppercase;
+  padding:0 4px 8px;margin-top:8px;font-weight:600;
+}
+.service-card{
+  background:var(--white);border:1.5px solid var(--line);border-radius:18px;
+  padding:16px 18px;display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;transition:all .2s;
+}
+.service-card.active{
+  border-color:var(--rose-gold);
+  background:linear-gradient(135deg,#fff 0%,#fdf6f0 100%);
+  box-shadow:0 0 0 3px rgba(201,164,122,0.12);
+}
+.service-card:active{transform:scale(.99)}
+.service-name{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:500;color:var(--ink)}
+.service-left{display:flex;align-items:center;gap:12px}
+.check-circle{
+  width:24px;height:24px;border-radius:50%;border:2px solid var(--line);
+  display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;
+}
+.service-card.active .check-circle{background:var(--rose-gold);border-color:var(--rose-gold)}
+
+/* ===== SCREEN: CALENDAR ===== */
+.month-nav{display:flex;align-items:center;justify-content:space-between;padding:0 24px 16px}
+.month-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500}
+.nav-btn{
+  width:36px;height:36px;border-radius:50%;border:1px solid var(--line);
+  background:var(--white);display:flex;align-items:center;justify-content:center;
+  color:var(--rose-gold-dark);cursor:pointer;
+}
+.calendar{padding:0 24px}
+.weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px}
+.weekday{text-align:center;font-size:11px;color:var(--ink-mute);font-weight:600;letter-spacing:0.05em;padding:6px 0}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.day{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;font-size:14px;color:var(--ink);cursor:pointer;
+  position:relative;transition:all .2s;
+}
+.day.empty{pointer-events:none}
+.day.past{color:var(--ink-mute);opacity:.35;cursor:not-allowed;pointer-events:none}
+.day.unavailable{color:var(--ink-mute);opacity:.3;cursor:not-allowed;pointer-events:none}
+.day.available::after{
+  content:'';position:absolute;bottom:4px;width:4px;height:4px;
+  background:var(--rose-gold);border-radius:50%;
+}
+.day.selected{
+  background:linear-gradient(135deg,var(--rose-gold),var(--rose-gold-dark));
+  color:white;font-weight:600;
+}
+.day.selected::after{display:none}
+.day.available:not(.selected):active{background:var(--rose-blush)}
+.time-slots{padding:20px 24px}
+.time-slots-title{font-size:13px;color:var(--ink-soft);margin-bottom:12px;font-weight:500}
+.slots-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.slot{
+  padding:13px 0;text-align:center;background:var(--white);border:1px solid var(--line);
+  border-radius:14px;font-size:15px;font-weight:500;color:var(--ink);cursor:pointer;transition:all .2s;
+}
+.slot.selected{
+  background:linear-gradient(135deg,var(--rose-gold),var(--rose-gold-dark));
+  color:white;border-color:transparent;box-shadow:var(--shadow-med);
+}
+.slot.taken{opacity:.3;text-decoration:line-through;cursor:not-allowed;pointer-events:none}
+
+/* ===== SCREEN: DETAILS ===== */
+.summary-card{
+  background:linear-gradient(135deg,#fff 0%,var(--rose-blush) 100%);
+  border:1px solid var(--rose-gold-light);border-radius:22px;
+  padding:22px;margin:0 24px 20px;position:relative;overflow:hidden;
+}
+.summary-card::before{
+  content:'';position:absolute;top:-50px;right:-50px;
+  width:140px;height:140px;
+  background:radial-gradient(circle,var(--rose-gold-light),transparent);opacity:.5;
+}
+.summary-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid rgba(201,164,122,0.15);position:relative;
+}
+.summary-row:last-child{border-bottom:none}
+.summary-label{font-size:12px;color:var(--ink-mute);font-weight:500}
+.summary-value{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;color:var(--ink)}
+.form-block{padding:0 24px;display:flex;flex-direction:column;gap:16px;margin-bottom:20px}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.chip{
+  padding:7px 14px;border-radius:999px;border:1px solid var(--line);
+  background:var(--white);font-size:12px;font-weight:500;color:var(--ink-soft);
+  cursor:pointer;transition:all .2s;font-family:'Heebo',sans-serif;
+}
+.chip.active{background:var(--rose-gold);border-color:var(--rose-gold);color:white}
+
+/* ===== SCREEN: SUCCESS ===== */
+.success-screen{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:24px;text-align:center;
+}
+.success-icon{
+  width:100px;height:100px;border-radius:50%;
+  background:linear-gradient(135deg,var(--rose-gold-light),var(--rose-gold));
+  display:flex;align-items:center;justify-content:center;color:white;
+  margin-bottom:28px;box-shadow:var(--shadow-lg);
+  animation:popIn .6s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+.success-title{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:500;margin-bottom:10px}
+.success-sub{color:var(--ink-soft);font-size:15px;line-height:1.6;margin-bottom:28px;max-width:280px}
+.success-card{
+  background:var(--white);border:1px solid var(--line);border-radius:20px;
+  padding:20px 24px;width:100%;margin-bottom:16px;box-shadow:var(--shadow-soft);
+  text-align:right;
+}
+.success-detail{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--ink);margin-bottom:4px}
+.success-meta{font-size:12px;color:var(--ink-mute)}
+
+/* ===== SCREEN: HISTORY ===== */
+.history-tabs{
+  display:flex;background:rgba(255,255,255,0.7);padding:4px;
+  border-radius:14px;border:1px solid var(--line);margin:0 24px 20px;
+}
+.history-tab{
+  flex:1;text-align:center;padding:10px;color:var(--ink-soft);
+  font-weight:500;font-size:13px;border-radius:10px;cursor:pointer;
+}
+.history-tab.active{
+  background:linear-gradient(135deg,var(--rose-gold),var(--rose-gold-dark));
+  color:white;box-shadow:var(--shadow-soft);
+}
+.history-item{
+  background:var(--white);border:1px solid var(--line);border-radius:18px;
+  padding:16px 18px;margin:0 24px 10px;display:flex;align-items:center;
+  gap:14px;box-shadow:var(--shadow-soft);
+}
+.history-date{
+  text-align:center;background:linear-gradient(135deg,var(--rose-blush),var(--rose-gold-light));
+  border-radius:12px;padding:8px 12px;min-width:54px;
+}
+.history-date .hd{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;line-height:1;color:var(--ink)}
+.history-date .hm{font-size:10px;color:var(--rose-gold-dark);margin-top:3px;font-weight:500}
+.history-info{flex:1}
+.history-service{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:500;color:var(--ink);line-height:1.3}
+.history-meta{font-size:11px;color:var(--ink-mute);margin-top:3px}
+.status-badge{
+  font-size:10px;padding:3px 8px;border-radius:999px;font-weight:600;letter-spacing:0.05em;
+}
+.status-done{background:rgba(122,155,110,0.15);color:#5a7a52}
+.status-upcoming{background:var(--rose-blush);color:var(--rose-gold-dark)}
+
+/* ===== SCREEN: MIRIT DASHBOARD ===== */
+.dash-header{padding:8px 24px 16px;display:flex;justify-content:space-between;align-items:flex-start}
+.dash-greet{font-size:13px;color:var(--ink-mute)}
+.dash-name{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500;margin-top:2px}
+.avatar{
+  width:46px;height:46px;border-radius:50%;
+  background:linear-gradient(135deg,var(--rose-gold),var(--rose-gold-dark));
+  display:flex;align-items:center;justify-content:center;color:white;
+  font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;
+}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 24px 16px}
+.stat{
+  background:var(--white);border:1px solid var(--line);border-radius:18px;
+  padding:14px 12px;text-align:center;box-shadow:var(--shadow-soft);
+}
+.stat-num{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:500;color:var(--rose-gold-dark);line-height:1}
+.stat-label{font-size:10px;color:var(--ink-mute);margin-top:4px;letter-spacing:0.04em}
+.reminder-banner{
+  margin:0 24px 16px;padding:16px 18px;
+  background:linear-gradient(135deg,#fff 0%,var(--rose-blush) 100%);
+  border:1px solid var(--rose-gold-light);border-radius:18px;
+  display:flex;align-items:center;gap:14px;box-shadow:var(--shadow-soft);
+  cursor:pointer;position:relative;overflow:hidden;
+}
+.reminder-banner::before{
+  content:'';position:absolute;top:0;right:0;bottom:0;width:4px;
+  background:linear-gradient(180deg,var(--rose-gold),var(--rose-gold-dark));
+}
+.reminder-icon{
+  width:44px;height:44px;border-radius:14px;
+  background:linear-gradient(135deg,var(--rose-gold),var(--rose-gold-dark));
+  display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0;
+}
+.reminder-content{flex:1;text-align:right}
+.reminder-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:500;color:var(--ink);line-height:1.2}
+.reminder-sub{font-size:12px;color:var(--ink-soft);margin-top:3px}
+.reminder-badge{background:var(--rose-gold-dark);color:white;font-size:11px;padding:4px 10px;border-radius:999px;font-weight:600}
+.today-section{padding:0 24px}
+.today-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.today-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500}
+.today-date{font-size:12px;color:var(--ink-mute)}
+.appt-list{display:flex;flex-direction:column;gap:10px}
+.appt-card{
+  background:var(--white);border:1px solid var(--line);border-radius:18px;
+  padding:14px;display:flex;gap:12px;align-items:center;
+  box-shadow:var(--shadow-soft);position:relative;overflow:hidden;
+}
+.appt-card.next::before{
+  content:'';position:absolute;top:0;right:0;bottom:0;width:4px;
+  background:linear-gradient(180deg,var(--rose-gold),var(--rose-gold-dark));
+}
+.appt-time{
+  background:linear-gradient(135deg,var(--rose-blush),var(--rose-gold-light));
+  border-radius:14px;padding:10px 12px;text-align:center;min-width:60px;
+}
+.appt-time .h{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;color:var(--ink);line-height:1}
+.appt-time .d{font-size:10px;color:var(--rose-gold-dark);margin-top:2px;font-weight:500}
+.appt-info{flex:1}
+.appt-client{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:500}
+.appt-service{font-size:12px;color:var(--ink-mute);margin-top:2px}
+.appt-actions{display:flex;gap:6px}
+.icon-btn{
+  width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--white);
+  display:flex;align-items:center;justify-content:center;color:var(--rose-gold-dark);cursor:pointer;
+}
+.empty-day{text-align:center;padding:30px;color:var(--ink-mute);font-size:14px}
+
+/* ===== SCREEN: AVAILABILITY ===== */
+.branch-toggle{
+  display:flex;background:rgba(255,255,255,0.7);padding:4px;
+  border-radius:14px;border:1px solid var(--line);margin:0 24px 20px;
+}
+.branch-toggle-btn{
+  flex:1;text-align:center;padding:10px;color:var(--ink-soft);
+  font-weight:500;font-size:14px;border-radius:10px;cursor:pointer;transition:all .2s;
+}
+.branch-toggle-btn.active{
+  background:linear-gradient(135deg,var(--rose-gold),var(--rose-gold-dark));
+  color:white;box-shadow:var(--shadow-soft);
+}
+.availability-day{
+  background:var(--white);border:1px solid var(--line);border-radius:16px;
+  padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;
+}
+.availability-day.off{background:rgba(168,133,94,0.04);border-style:dashed}
+.day-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500}
+.day-hours{font-size:13px;color:var(--ink-soft);margin-top:2px}
+.day-hours.off{color:var(--ink-mute);font-style:italic}
+.toggle{
+  width:46px;height:26px;background:var(--line);border-radius:999px;
+  position:relative;cursor:pointer;transition:all .2s;flex-shrink:0;
+}
+.toggle.on{background:var(--rose-gold)}
+.toggle::after{
+  content:'';position:absolute;top:3px;right:3px;width:20px;height:20px;
+  background:white;border-radius:50%;transition:all .2s;box-shadow:0 2px 4px rgba(0,0,0,0.1);
+}
+.toggle.on::after{right:23px}
+
+/* ===== Admin login ===== */
+.admin-badge{
+  display:inline-flex;align-items:center;gap:6px;padding:6px 14px;
+  border-radius:999px;font-size:11px;font-weight:500;letter-spacing:0.08em;
+  background:var(--rose-blush);color:var(--rose-gold-dark);text-transform:uppercase;
+  margin-bottom:12px;
+}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="loading-logo">M</div>
+  <div class="loading-tag">Professional Nail Care</div>
+  <div class="loading-dot"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ============================================================ -->
+<!-- SCREEN 1: INSTALL INSTRUCTIONS (first visit)                -->
+<!-- ============================================================ -->
+<div id="screen-install" class="screen">
+  <div class="statusbar"><span id="time-install" class="statusbar-time">9:41</span></div>
+  <div class="install-hero">
+    <div class="install-illustration">M</div>
+    <div class="brand-name display" style="font-size:28px">ברוכה הבאה</div>
+    <div class="brand-ornament">✦ ✦ ✦</div>
+    <p style="font-size:14px;color:var(--ink-soft);line-height:1.6;max-width:280px;margin:0 auto">
+      כדי לפתוח את האפליקציה בקלות בכל פעם<br>הוסיפי אותה למסך הבית בשלושה צעדים פשוטים
+    </p>
+  </div>
+  <div style="padding:20px 24px 10px">
+    <div class="install-step">
+      <div class="step-num">1</div>
+      <div>
+        <div class="step-title">לחצי על כפתור השיתוף</div>
+        <div class="step-desc">הריבוע עם החץ למעלה בתחתית הדפדפן Safari</div>
+      </div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">2</div>
+      <div>
+        <div class="step-title">בחרי "הוסף למסך הבית"</div>
+        <div class="step-desc">גללי את התפריט קצת למטה אם לא רואה את האפשרות</div>
+      </div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">3</div>
+      <div>
+        <div class="step-title">לחצי "הוסף"</div>
+        <div class="step-desc">האפליקציה תופיע במסך הבית, בדיוק כמו אפליקציה רגילה ✨</div>
+      </div>
+    </div>
+  </div>
+  <div style="padding:10px 24px 40px;display:flex;flex-direction:column;gap:10px">
+    <button class="btn btn-primary" onclick="doneInstall()">
+      הבנתי, המשך לאפליקציה
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+    <button class="btn btn-ghost" style="padding:14px;font-size:13px" onclick="doneInstall()">אעשה זאת מאוחר יותר</button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN 2: RETURNING CUSTOMER WELCOME                        -->
+<!-- ============================================================ -->
+<div id="screen-welcome" class="screen">
+  <div class="statusbar"><span id="time-welcome" class="statusbar-time">9:41</span></div>
+  <div class="brand-header">
+    <div class="brand-name display" style="font-size:24px">Mirit</div>
+    <div class="brand-tag" style="font-size:9px">Professional Nail Care</div>
+  </div>
+  <div style="padding:8px 24px 0;text-align:center">
+    <div class="welcome-greet">ברוכה הבאה,</div>
+    <div class="welcome-name" id="welcome-customer-name">טוענת...</div>
+  </div>
+  <div id="next-appt-container"></div>
+  <div class="quick-actions">
+    <div class="quick-card" onclick="goTo('screen-branch')">
+      <div class="quick-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <div class="quick-title">הזמיני תור</div>
+      <div class="quick-sub">בחרי תאריך ושעה</div>
+    </div>
+    <div class="quick-card" onclick="goTo('screen-history')">
+      <div class="quick-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div class="quick-title">ההיסטוריה שלי</div>
+      <div class="quick-sub">תורים קודמים</div>
+    </div>
+    <div class="quick-card" onclick="openWA('0504488463','היי מירית!')">
+      <div class="quick-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
+      </div>
+      <div class="quick-title">WhatsApp</div>
+      <div class="quick-sub">שלחי הודעה למירית</div>
+    </div>
+    <div class="quick-card" onclick="goTo('screen-install')">
+      <div class="quick-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="quick-title">הוראות התקנה</div>
+      <div class="quick-sub">הוסיפי למסך הבית</div>
+    </div>
+  </div>
+  <div style="padding:0 24px 100px">
+    <a class="wa-btn" href="https://www.instagram.com/golanmirit?igsh=bWk3dGxsMzhha2Fy" target="_blank">
+      <div class="wa-icon" style="background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="white" stroke="none"/></svg>
+      </div>
+      <div class="wa-content">
+        <div class="wa-title">עקבי אחרינו באינסטגרם</div>
+        <div class="wa-sub">@golanmirit · השראה ועבודות</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--rose-gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN 3: HISTORY                                           -->
+<!-- ============================================================ -->
+<div id="screen-history" class="screen">
+  <div class="statusbar"><span class="statusbar-time">9:41</span></div>
+  <div class="back-bar" onclick="goBack()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    חזרה
+  </div>
+  <div class="section-title">ההיסטוריה שלי</div>
+  <div class="history-tabs">
+    <div class="history-tab active" onclick="switchHistoryTab('upcoming',this)">תורים קרובים</div>
+    <div class="history-tab" onclick="switchHistoryTab('past',this)">תורים קודמים</div>
+  </div>
+  <div id="history-list" style="padding-bottom:40px"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN 4: BRANCH SELECTION (first visit)                    -->
+<!-- ============================================================ -->
+<div id="screen-branch" class="screen">
+  <div class="statusbar"><span class="statusbar-time">9:41</span></div>
+  <div class="brand-header">
+    <div class="brand-name display" style="font-size:26px">Mirit</div>
+    <div class="brand-tag" style="font-size:9px">Professional Nail Care</div>
+  </div>
+  <div class="section-title">בחרי סניף</div>
+  <div class="section-sub">לאיזה סניף תרצי להגיע?</div>
+  <div class="branch-cards">
+    <div class="branch-card" onclick="selectBranch('rehovot')">
+      <div class="branch-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="branch-info">
+        <div class="branch-name">רחובות</div>
+        <div class="branch-meta">ראשון · שלישי · חמישי</div>
+      </div>
+      <div class="branch-arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+    <div class="branch-card" onclick="selectBranch('modiin')">
+      <div class="branch-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div class="branch-info">
+        <div class="branch-name">מודיעין</div>
+        <div class="branch-meta">שני · רביעי · 09:00–16:00</div>
+      </div>
+      <div class="branch-arrow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+  </div>
+  <div style="padding:24px 24px 40px">
+    <div class="divider"></div>
+    <div class="wa-btn" onclick="openWA('0504488463','היי מירית, רציתי לשאול לגבי תור')">
+      <div class="wa-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
+      </div>
+      <div class="wa-content">
+        <div class="wa-title">שאלה לפני הזמנה?</div>
+        <div class="wa-sub">שלחי הודעה למירית ישירות</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN 5: SERVICE SELECTION                                 -->
+<!-- ============================================================ -->
+<div id="screen-services" class="screen">
+  <div class="statusbar"><span class="statusbar-time">9:41</span></div>
+  <div class="back-bar" onclick="goBack()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    חזרה לסניפים
+  </div>
+  <div class="section-title">בחרי טיפולים</div>
+  <div class="section-sub" id="services-branch-label">אפשר לבחור יותר מטיפול אחד</div>
+  <div class="service-list">
+    <div class="service-group-title">ידיים ורגליים</div>
+    <div class="service-card" data-service="מבנה אנטומי" data-duration="60" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">מבנה אנטומי</div>
+      </div>
+    </div>
+    <div class="service-card" data-service="לק ג'ל רגיל" data-duration="45" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">לק ג'ל רגיל</div>
+      </div>
+    </div>
+    <div class="service-card" data-service="בניה בטיפסים הפוכים" data-duration="120" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">בניה בטיפסים הפוכים</div>
+      </div>
+    </div>
+    <div class="service-card" data-service="מילוי בג'ל בניה" data-duration="75" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">מילוי בג'ל בניה</div>
+      </div>
+    </div>
+    <div class="service-card" data-service="לק ג'ל רגליים" data-duration="30" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">לק ג'ל רגליים</div>
+      </div>
+    </div>
+    <div class="service-card" data-service="פדיקור לק רגיל" data-duration="60" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">פדיקור לק רגיל</div>
+      </div>
+    </div>
+    <div class="service-card" data-service="פדיקור לק ג'ל" data-duration="75" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">פדיקור לק ג'ל</div>
+      </div>
+    </div>
+    <div class="service-card" data-service="השלמת ציפורן" data-duration="15" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">השלמת ציפורן</div>
+      </div>
+    </div>
+    <div class="service-group-title" style="margin-top:8px">טיפולי פנים</div>
+    <div class="service-card" data-service="גבות" data-duration="15" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">גבות</div>
+      </div>
+    </div>
+    <div class="service-card" data-service="שפם" data-duration="15" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">שפם</div>
+      </div>
+    </div>
+    <div class="service-card" data-service="צביעת גבות" data-duration="15" onclick="toggleService(this)">
+      <div class="service-left">
+        <div class="check-circle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="service-name">צביעת גבות</div>
+      </div>
+    </div>
+    <div style="height:90px"></div>
+  </div>
+  <div class="sticky-bottom">
+    <button class="btn btn-primary" id="services-next-btn" onclick="goToCalendar()" style="opacity:.4;pointer-events:none">
+      המשך לבחירת תאריך
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN 6: CALENDAR + TIME SLOTS                            -->
+<!-- ============================================================ -->
+<div id="screen-calendar" class="screen">
+  <div class="statusbar"><span class="statusbar-time">9:41</span></div>
+  <div class="back-bar" onclick="goBack()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    חזרה לטיפולים
+  </div>
+  <div class="section-title">בחרי תאריך</div>
+  <div class="month-nav">
+    <div class="nav-btn" onclick="prevMonth()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+    <div class="month-name" id="cal-month-name">מאי 2026</div>
+    <div class="nav-btn" onclick="nextMonth()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+  </div>
+  <div class="calendar">
+    <div class="weekdays">
+      <div class="weekday">א'</div>
+      <div class="weekday">ב'</div>
+      <div class="weekday">ג'</div>
+      <div class="weekday">ד'</div>
+      <div class="weekday">ה'</div>
+      <div class="weekday">ו'</div>
+      <div class="weekday">ש'</div>
+    </div>
+    <div class="days" id="cal-days"></div>
+  </div>
+  <div class="time-slots" id="time-slots-section" style="display:none">
+    <div class="time-slots-title" id="time-slots-title">בחרי שעה</div>
+    <div class="slots-grid" id="slots-grid"></div>
+  </div>
+  <div style="height:90px"></div>
+  <div class="sticky-bottom">
+    <button class="btn btn-primary" id="cal-next-btn" onclick="goToDetails()" style="opacity:.4;pointer-events:none">
+      המשך לאישור פרטים
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN 7: CONFIRM DETAILS                                   -->
+<!-- ============================================================ -->
+<div id="screen-details" class="screen">
+  <div class="statusbar"><span class="statusbar-time">9:41</span></div>
+  <div class="back-bar" onclick="goBack()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    חזרה לתאריך
+  </div>
+  <div class="section-title">אישור פרטים</div>
+  <div class="summary-card" id="details-summary"></div>
+  <div class="form-block">
+    <div>
+      <label class="input-label">שמך המלא</label>
+      <input class="input" type="text" id="input-name" placeholder="שם פרטי + משפחה" oninput="checkDetailsForm()">
+    </div>
+    <div>
+      <label class="input-label">מספר טלפון</label>
+      <input class="input" type="tel" id="input-phone" placeholder="05X-XXXXXXX" oninput="checkDetailsForm()">
+    </div>
+    <div>
+      <label class="input-label">הערות נוספות</label>
+      <div class="chips" id="chips-container">
+        <div class="chip" onclick="toggleChip(this,'השלמת ציפורן')">השלמת ציפורן</div>
+        <div class="chip" onclick="toggleChip(this,'ללא הסרת ג\'ל')">ללא הסרת ג'ל</div>
+        <div class="chip" onclick="toggleChip(this,'רגישות לעור')">רגישות לעור</div>
+        <div class="chip" onclick="toggleChip(this,'ביקור ראשון')">ביקור ראשון</div>
+      </div>
+    </div>
+    <div>
+      <label class="input-label">הערה חופשית (אופציונלי)</label>
+      <textarea class="input" id="input-note" rows="3" placeholder="כל מה שחשוב שמירית תדע..." style="resize:none;padding-top:14px"></textarea>
+    </div>
+  </div>
+  <div class="sticky-bottom">
+    <button class="btn btn-primary" id="details-submit-btn" onclick="submitBooking()" style="opacity:.4;pointer-events:none">
+      שלחי בקשת תור למירית
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN 8: BOOKING SUCCESS                                   -->
+<!-- ============================================================ -->
+<div id="screen-success" class="screen">
+  <div class="statusbar"><span class="statusbar-time">9:41</span></div>
+  <div class="success-screen">
+    <div class="success-icon">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="success-title display">בקשתך נשלחה!</div>
+    <div class="success-sub">מירית תאשר את התור בהקדם. תקבלי אישור ב-WhatsApp.</div>
+    <div class="success-card" id="success-summary"></div>
+    <div id="success-waze-btns" style="display:flex;gap:10px;width:100%;margin-bottom:12px"></div>
+    <button class="btn btn-primary" onclick="goTo('screen-welcome')" style="margin-bottom:0">חזרה לדף הבית</button>
+    <div style="margin-top:16px;padding:14px 16px;background:rgba(201,164,122,0.08);border:1px solid var(--rose-gold-light);border-radius:14px;width:100%;text-align:center">
+      <div style="font-size:12px;color:var(--ink-mute);line-height:1.6">
+        ⚠️ <strong style="color:var(--ink-soft)">מדיניות ביטול:</strong> ביטול תור בפחות מ-24 שעות לפני המועד<br>יחויב ב-50% מעלות הטיפול
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: MIRIT APPOINTMENTS                                  -->
+<!-- ============================================================ -->
+<div id="screen-mirit-appts" class="screen">
+  <div class="statusbar"><span class="statusbar-time">9:41</span></div>
+  <div class="section-title">כל התורים</div>
+  <!-- Filters -->
+  <div style="padding:0 24px 16px;display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;gap:10px">
+      <select id="filter-branch" class="input" style="padding:12px 16px;flex:1" onchange="applyApptFilter()">
+        <option value="all">כל הסניפים</option>
+        <option value="rehovot">רחובות</option>
+        <option value="modiin">מודיעין</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <input type="date" id="filter-from" class="input" style="padding:12px 16px;flex:1" onchange="applyApptFilter()">
+      <span style="color:var(--ink-mute);font-size:13px;flex-shrink:0">עד</span>
+      <input type="date" id="filter-to" class="input" style="padding:12px 16px;flex:1" onchange="applyApptFilter()">
+    </div>
+    <button class="btn" style="padding:12px;font-size:13px;background:var(--rose-blush);color:var(--rose-gold-dark);border:1px solid var(--rose-gold-light)" onclick="showBlockModal()">
+      🔒 חסמי שעה / הפסקה
+    </button>
+  </div>
+  <div id="mirit-appts-list" style="padding:0 24px 100px"></div>
+</div>
+
+<!-- Block hours modal -->
+<div id="block-modal" style="display:none;position:fixed;inset:0;background:rgba(61,47,36,0.6);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px">
+  <div style="background:var(--cream);border-radius:28px;padding:28px;width:100%;max-width:380px;box-shadow:var(--shadow-lg)">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;margin-bottom:20px;text-align:center">חסימת שעות</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label class="input-label">תאריך</label>
+        <input type="date" id="block-date" class="input" style="padding:14px 16px">
+      </div>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1">
+          <label class="input-label">משעה</label>
+          <input type="time" id="block-from" class="input" style="padding:14px 16px">
+        </div>
+        <div style="flex:1">
+          <label class="input-label">עד שעה</label>
+          <input type="time" id="block-to" class="input" style="padding:14px 16px">
+        </div>
+      </div>
+      <div>
+        <label class="input-label">סיבה (אופציונלי)</label>
+        <input type="text" id="block-note" class="input" placeholder="הפסקה, פגישה..." style="padding:14px 16px">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-primary" style="flex:2" onclick="saveBlock()">חסמי</button>
+      <button class="btn btn-ghost" style="flex:1;padding:14px" onclick="closeBlockModal()">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- ============================================================ -->
+<div id="screen-mirit" class="screen">
+  <div class="statusbar"><span class="statusbar-time">9:41</span></div>
+  <div class="dash-header">
+    <div>
+      <div class="dash-greet">שלום,</div>
+      <div class="dash-name display">מירית ✨</div>
+    </div>
+    <div class="avatar">M</div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat">
+      <div class="stat-num" id="stat-today">0</div>
+      <div class="stat-label">תורים היום</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-week">0</div>
+      <div class="stat-label">השבוע</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-month">0</div>
+      <div class="stat-label">החודש</div>
+    </div>
+  </div>
+  <div class="reminder-banner" id="reminder-banner" onclick="showReminders()" style="display:none">
+    <div class="reminder-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </div>
+    <div class="reminder-content">
+      <div class="reminder-title">תזכורות למחר</div>
+      <div class="reminder-sub" id="reminder-sub">לחצי לשלוח</div>
+    </div>
+    <div class="reminder-badge" id="reminder-badge">0</div>
+  </div>
+  <div class="today-section">
+    <div class="today-header">
+      <div class="today-title display">תורים היום</div>
+      <div class="today-date" id="today-date-label"></div>
+    </div>
+    <div class="appt-list" id="mirit-today-list">
+      <div class="empty-day">טוען...</div>
+    </div>
+  </div>
+  <div style="height:90px"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN 10: MIRIT AVAILABILITY                               -->
+<!-- ============================================================ -->
+<div id="screen-availability" class="screen">
+  <div class="statusbar"><span class="statusbar-time">9:41</span></div>
+  <div class="section-title">ניהול זמינות</div>
+  <div class="section-sub">הגדירי ימים ושעות עבודה לכל סניף</div>
+  <div class="branch-toggle">
+    <div class="branch-toggle-btn active" id="avail-btn-rehovot" onclick="switchAvailBranch('rehovot')">רחובות</div>
+    <div class="branch-toggle-btn" id="avail-btn-modiin" onclick="switchAvailBranch('modiin')">מודיעין</div>
+  </div>
+  <div style="padding:0 24px 100px" id="avail-days-list"></div>
+</div>
+
+<!-- Bottom nav for Mirit -->
+<div class="bottom-nav" id="mirit-nav">
+  <div class="nav-item active" id="nav-home" onclick="miritNav('home')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>בית</span>
+  </div>
+  <div class="nav-item" id="nav-appts" onclick="miritNav('appts')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>תורים</span>
+  </div>
+  <div class="nav-item" id="nav-avail" onclick="miritNav('avail')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span>זמינות</span>
+  </div>
+  <div class="nav-item" id="nav-logout" onclick="logoutMirit()">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    <span>יציאה</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: REMINDERS                                           -->
+<!-- ============================================================ -->
+<div id="screen-reminders" class="screen">
+  <div class="statusbar"><span class="statusbar-time">9:41</span></div>
+  <div class="back-bar" onclick="goBack()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    חזרה לדשבורד
+  </div>
+  <div class="section-title">תזכורות למחר</div>
+  <div class="section-sub" id="reminders-count">טוען...</div>
+  <div style="padding:0 24px 100px" id="reminders-list"></div>
+</div>
+
+<!-- Admin login modal -->
+<div id="admin-modal" style="display:none;position:fixed;inset:0;background:rgba(61,47,36,0.6);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px">
+  <div style="background:var(--cream);border-radius:28px;padding:32px 28px;width:100%;max-width:380px;box-shadow:var(--shadow-lg)">
+    <div style="text-align:center;margin-bottom:24px">
+      <div class="brand-name display" style="font-size:28px">Mirit</div>
+      <div style="font-size:13px;color:var(--ink-mute);margin-top:6px">כניסה לממשק ניהול</div>
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="input-label">סיסמה</label>
+      <input class="input" type="password" id="admin-password" placeholder="הזיני סיסמה" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+    </div>
+    <button class="btn btn-primary" onclick="checkAdminLogin()">כניסה</button>
+    <button class="btn btn-ghost" style="margin-top:10px;padding:14px;font-size:13px" onclick="closeAdminModal()">ביטול</button>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, Timestamp, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAnR4HJNhnheWBalVtTd9em6wVl5vrSuJU",
+  authDomain: "mirit-nails.firebaseapp.com",
+  projectId: "mirit-nails",
+  storageBucket: "mirit-nails.firebasestorage.app",
+  messagingSenderId: "608023769046",
+  appId: "1:608023769046:web:1f0969f7ff9b6ff099be77"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ===== Expose db and Firestore functions to global scope =====
+window._db = db;
+window._col = collection;
+window._addDoc = addDoc;
+window._getDocs = getDocs;
+window._query = query;
+window._where = where;
+window._orderBy = orderBy;
+window._Timestamp = Timestamp;
+window._doc = doc;
+window._getDoc = getDoc;
+window._setDoc = setDoc;
+window._updateDoc = updateDoc;
+
+window._fbReady = true;
+document.dispatchEvent(new Event('fbReady'));
+</script>
+
+<script>
+// ===== STATE =====
+const state = {
+  branch: null,
+  services: [],
+  totalDuration: 0,
+  selectedDate: null,
+  selectedTime: null,
+  customerName: '',
+  customerPhone: '',
+  chips: [],
+  note: '',
+  calYear: new Date().getFullYear(),
+  calMonth: new Date().getMonth(),
+  availBranch: 'rehovot',
+  screenHistory: [],
+  availability: {
+    rehovot: { 0:null, 2:null, 4:null }, // Sun=0, Tue=2, Thu=4
+    modiin:  { 1:null, 3:null }          // Mon=1, Wed=3
+  },
+  bookedSlots: {},
+  lastBooking: null,
+};
+
+const ADMIN_PASS = 'mirit2024';
+const MIRIT_WA = '972504488463';
+
+const HEBREW_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+const HEBREW_DAYS_SHORT = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const BRANCH_DAYS = { rehovot:[0,2,4], modiin:[1,3] };
+
+// ===== NAVIGATION =====
+function goTo(screenId) {
+  const prev = document.querySelector('.screen.active');
+  if (prev) {
+    state.screenHistory.push(prev.id);
+    prev.classList.remove('active');
+  }
+  document.getElementById(screenId).classList.add('active');
+  document.getElementById(screenId).scrollTop = 0;
+
+  const miritScreens = ['screen-mirit','screen-availability','screen-mirit-appts','screen-reminders'];
+  const nav = document.getElementById('mirit-nav');
+  nav.classList.toggle('show', miritScreens.includes(screenId));
+}
+
+function goBack() {
+  if (!state.screenHistory.length) { goTo('screen-welcome'); return; }
+  const prev = state.screenHistory.pop();
+  document.querySelector('.screen.active')?.classList.remove('active');
+  document.getElementById(prev).classList.add('active');
+  document.getElementById(prev).scrollTop = 0;
+  const miritScreens = ['screen-mirit','screen-availability','screen-mirit-appts','screen-reminders'];
+  const nav = document.getElementById('mirit-nav');
+  nav.classList.toggle('show', miritScreens.includes(prev));
+}
+window.goTo = goTo;
+window.goBack = goBack;
+
+// ===== TIME =====
+function updateTime() {
+  const now = new Date();
+  const t = now.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+  document.querySelectorAll('.statusbar-time').forEach(el => el.textContent = t);
+}
+setInterval(updateTime, 30000);
+updateTime();
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+window.showToast = showToast;
+
+// ===== WAZE =====
+window.openWaze = function(address) {
+  window.open(`https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`, '_blank');
+};
+
+
+function openWA(phone, msg) {
+  const clean = phone.replace(/\D/g,'').replace(/^0/,'972');
+  window.open(`https://wa.me/${clean}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+window.openWA = openWA;
+
+// ===== INSTALL =====
+function doneInstall() {
+  localStorage.setItem('installSeen', '1');
+  initCustomerFlow();
+}
+window.doneInstall = doneInstall;
+
+// ===== CUSTOMER INIT =====
+function initCustomerFlow() {
+  const saved = localStorage.getItem('customerData');
+  if (saved) {
+    const d = JSON.parse(saved);
+    state.customerName = d.name || '';
+    state.customerPhone = d.phone || '';
+    loadWelcomeScreen(d.name);
+    goTo('screen-welcome');
+  } else {
+    goTo('screen-branch');
+  }
+}
+
+async function loadWelcomeScreen(name) {
+  document.getElementById('welcome-customer-name').textContent = name || 'ברוכה הבאה';
+  const container = document.getElementById('next-appt-container');
+
+  // Load next appointment
+  try {
+    const phone = JSON.parse(localStorage.getItem('customerData') || '{}').phone || '';
+    if (phone && window._db) {
+      const q = window._query(
+        window._col(window._db, 'appointments'),
+        window._where('phone', '==', phone)
+      );
+      const snap = await window._getDocs(q);
+      const now = new Date();
+      const validDocs = snap.docs
+        .filter(d => {
+          const data = d.data();
+          return data.status !== 'cancelled' && data.datetime.toDate() >= now;
+        })
+        .sort((a, b) => a.data().datetime.toDate() - b.data().datetime.toDate());
+      if (validDocs.length > 0) {
+        const appt = validDocs[0].data();
+        const dt = appt.datetime.toDate();
+        const dateStr = dt.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
+        const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+        container.innerHTML = `
+          <div class="next-appt-card">
+            <div class="next-appt-label">התור הקרוב שלך</div>
+            <div class="next-appt-date">${dateStr}</div>
+            <div class="next-appt-time">${timeStr}</div>
+            <div class="next-appt-service">${appt.services} · ${appt.branch === 'rehovot' ? 'רחובות' : 'מודיעין'}</div>
+            <div class="next-appt-divider"></div>
+            <div class="appt-mini-actions">
+              <div class="appt-mini-btn" onclick="addToCalendar('${appt.services}','${dt.toISOString()}',${appt.duration})">הוסיפי ליומן</div>
+              <div class="appt-mini-btn" onclick="cancelAppt('${validDocs[0].id}')">ביטול</div>
+            </div>
+          </div>`;
+        return;
+      }
+    }
+  } catch(e) { console.log(e); }
+
+  container.innerHTML = `
+    <div class="no-appt-card">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--ink-mute)">אין תורים קרובים</div>
+      <div style="font-size:13px;color:var(--ink-mute);margin-top:6px">לחצי על "הזמיני תור" למטה</div>
+    </div>`;
+}
+
+window.addToCalendar = function(title, iso, dur) {
+  const start = new Date(iso);
+  const end = new Date(start.getTime() + dur*60000);
+  const fmt = d => d.toISOString().replace(/-|:|\.\d+/g,'');
+  window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('תור - ' + title + ' - מירית')}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent('Mirit Professional Nail Care')}`,'_blank');
+};
+
+window.cancelAppt = async function(id) {
+  if (!confirm('לבטל את התור?')) return;
+  try {
+    await window._updateDoc(window._doc(window._db,'appointments',id), {status:'cancelled'});
+    showToast('התור בוטל');
+    loadWelcomeScreen(state.customerName);
+  } catch(e) { showToast('שגיאה בביטול'); }
+};
+
+// ===== BRANCH SELECTION =====
+window.selectBranch = function(branch) {
+  state.branch = branch;
+  state.services = [];
+  state.totalDuration = 0;
+  document.getElementById('services-branch-label').textContent =
+    `סניף ${branch === 'rehovot' ? 'רחובות' : 'מודיעין'} · אפשר לבחור יותר מטיפול אחד`;
+  document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('services-next-btn').style.opacity = '0.4';
+  document.getElementById('services-next-btn').style.pointerEvents = 'none';
+  goTo('screen-services');
+};
+
+// ===== SERVICE SELECTION =====
+window.toggleService = function(card) {
+  card.classList.toggle('active');
+  const svc = card.dataset.service;
+  const dur = parseInt(card.dataset.duration);
+  if (card.classList.contains('active')) {
+    state.services.push(svc);
+    state.totalDuration += dur;
+  } else {
+    state.services = state.services.filter(s => s !== svc);
+    state.totalDuration -= dur;
+  }
+  const btn = document.getElementById('services-next-btn');
+  btn.style.opacity = state.services.length ? '1' : '0.4';
+  btn.style.pointerEvents = state.services.length ? 'all' : 'none';
+};
+
+window.goToCalendar = function() {
+  state.selectedDate = null;
+  state.selectedTime = null;
+  renderCalendar();
+  document.getElementById('time-slots-section').style.display = 'none';
+  document.getElementById('cal-next-btn').style.opacity = '0.4';
+  document.getElementById('cal-next-btn').style.pointerEvents = 'none';
+  goTo('screen-calendar');
+};
+
+// ===== CALENDAR =====
+function renderCalendar() {
+  const m = state.calMonth;
+  const y = state.calYear;
+  document.getElementById('cal-month-name').textContent = HEBREW_MONTHS[m] + ' ' + y;
+  const firstDay = new Date(y, m, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const allowedDays = BRANCH_DAYS[state.branch] || [];
+
+  let html = '';
+  for (let i = 0; i < firstDay; i++) html += '<div class="day empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(y, m, d);
+    const dow = date.getDay();
+    const isPast = date < today;
+    const isAvail = allowedDays.includes(dow) && !isPast;
+    const isSelected = state.selectedDate && state.selectedDate.getDate()===d && state.selectedDate.getMonth()===m;
+    let cls = 'day';
+    if (isPast) cls += ' past';
+    else if (!allowedDays.includes(dow)) cls += ' unavailable';
+    else cls += ' available';
+    if (isSelected) cls += ' selected';
+    html += `<div class="${cls}" onclick="selectDate(${y},${m},${d})">${d}</div>`;
+  }
+  document.getElementById('cal-days').innerHTML = html;
+}
+
+window.prevMonth = function() {
+  if (state.calMonth === 0) { state.calMonth=11; state.calYear--; }
+  else state.calMonth--;
+  renderCalendar();
+};
+window.nextMonth = function() {
+  if (state.calMonth === 11) { state.calMonth=0; state.calYear++; }
+  else state.calMonth++;
+  renderCalendar();
+};
+
+window.selectDate = async function(y, m, d) {
+  const date = new Date(y, m, d);
+  const dow = date.getDay();
+  if (!BRANCH_DAYS[state.branch].includes(dow)) return;
+  state.selectedDate = date;
+  state.selectedTime = null;
+  document.getElementById('cal-next-btn').style.opacity = '0.4';
+  document.getElementById('cal-next-btn').style.pointerEvents = 'none';
+  renderCalendar();
+  await loadTimeSlots(date);
+};
+
+async function loadTimeSlots(date) {
+  const section = document.getElementById('time-slots-section');
+  const grid = document.getElementById('slots-grid');
+  const title = document.getElementById('time-slots-title');
+  section.style.display = 'block';
+  grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px">טוענת שעות...</div>';
+
+  // Get booked slots and blocked slots for this date from Firebase
+  const dateStr = date.toISOString().split('T')[0];
+  let bookedTimes = [];
+  try {
+    const start = window._Timestamp.fromDate(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0,0,0));
+    const end   = window._Timestamp.fromDate(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23,59,59));
+
+    // Regular appointments
+    const q = window._query(
+      window._col(window._db,'appointments'),
+      window._where('datetime','>=',start),
+      window._where('datetime','<=',end),
+      window._where('status','in',['confirmed','pending'])
+    );
+    const snap = await window._getDocs(q);
+    snap.forEach(d => {
+      const dt = d.data().datetime.toDate();
+      const dur = d.data().duration || 60;
+      bookedTimes.push({ hour: dt.getHours(), minute: dt.getMinutes(), duration: dur });
+    });
+
+    // Blocked slots
+    const qb = window._query(
+      window._col(window._db,'blocked_slots'),
+      window._where('date','==',dateStr)
+    );
+    const snapB = await window._getDocs(qb);
+    snapB.forEach(d => {
+      const from = d.data().from.toDate();
+      const to   = d.data().to.toDate();
+      const dur = Math.round((to - from) / 60000);
+      bookedTimes.push({ hour: from.getHours(), minute: from.getMinutes(), duration: dur });
+    });
+  } catch(e) { console.log('slots error',e); }
+
+  // Generate slots: 09:00 to endH, only full hours
+  const startH = 9;
+  const endH   = state.branch === 'modiin' ? 16 : 18;
+  const slots = [];
+  for (let h = startH; h < endH; h++) {
+    const totalMin = h * 60;
+    const endMin = totalMin + state.totalDuration;
+    if (endMin > endH * 60) continue;
+    const isTaken = bookedTimes.some(b => {
+      const bs = b.hour * 60 + b.minute;
+      const be = bs + b.duration;
+      return (totalMin < be && endMin > bs);
+    });
+    slots.push({ h, min: 0, taken: isTaken });
+  }
+
+  const dow = date.getDay();
+  title.textContent = `שעות פנויות · ${HEBREW_DAYS_SHORT[dow]} ${date.getDate()} ב${HEBREW_MONTHS[date.getMonth()]}`;
+  grid.innerHTML = slots.map(s => {
+    const label = String(s.h).padStart(2,'0') + ':' + String(s.min).padStart(2,'0');
+    const isSelected = state.selectedTime === label;
+    return `<div class="slot${s.taken?' taken':''}${isSelected?' selected':''}" onclick="selectTime('${label}')">${label}</div>`;
+  }).join('');
+}
+
+window.selectTime = function(t) {
+  state.selectedTime = t;
+  document.querySelectorAll('.slot').forEach(s => {
+    s.classList.toggle('selected', s.textContent.trim() === t);
+  });
+  const btn = document.getElementById('cal-next-btn');
+  btn.style.opacity = '1';
+  btn.style.pointerEvents = 'all';
+};
+
+// ===== DETAILS SCREEN =====
+window.goToDetails = function() {
+  const saved = JSON.parse(localStorage.getItem('customerData') || '{}');
+  if (saved.name) document.getElementById('input-name').value = saved.name;
+  if (saved.phone) document.getElementById('input-phone').value = saved.phone;
+
+  const d = state.selectedDate;
+  const dateStr = d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('details-summary').innerHTML = `
+    <div class="summary-row">
+      <div class="summary-label">סניף</div>
+      <div class="summary-value">${state.branch === 'rehovot' ? 'רחובות' : 'מודיעין'}</div>
+    </div>
+    <div class="summary-row">
+      <div class="summary-label">טיפולים</div>
+      <div class="summary-value" style="font-size:15px;text-align:left">${state.services.join(' + ')}</div>
+    </div>
+    <div class="summary-row">
+      <div class="summary-label">תאריך</div>
+      <div class="summary-value" style="font-size:15px">${dateStr}</div>
+    </div>
+    <div class="summary-row">
+      <div class="summary-label">שעה</div>
+      <div class="summary-value">${state.selectedTime}</div>
+    </div>
+    <div class="summary-row">
+      <div class="summary-label">משך</div>
+      <div class="summary-value">${state.totalDuration} דקות</div>
+    </div>`;
+  checkDetailsForm();
+  goTo('screen-details');
+};
+
+window.toggleChip = function(el, val) {
+  el.classList.toggle('active');
+  if (el.classList.contains('active')) { state.chips.push(val); }
+  else { state.chips = state.chips.filter(c => c !== val); }
+};
+
+window.checkDetailsForm = function() {
+  const name = document.getElementById('input-name').value.trim();
+  const phone = document.getElementById('input-phone').value.trim();
+  const btn = document.getElementById('details-submit-btn');
+  const ok = name.length >= 2 && phone.length >= 9;
+  btn.style.opacity = ok ? '1' : '0.4';
+  btn.style.pointerEvents = ok ? 'all' : 'none';
+};
+
+// ===== SUBMIT BOOKING =====
+window.submitBooking = async function() {
+  const name = document.getElementById('input-name').value.trim();
+  const phone = document.getElementById('input-phone').value.trim();
+  const note = document.getElementById('input-note').value.trim();
+  const chips = state.chips.slice();
+
+  const [h, m] = state.selectedTime.split(':').map(Number);
+  const dt = new Date(state.selectedDate);
+  dt.setHours(h, m, 0, 0);
+
+  const booking = {
+    name,
+    phone,
+    branch: state.branch,
+    services: state.services.join(' + '),
+    duration: state.totalDuration,
+    datetime: window._Timestamp.fromDate(dt),
+    chips,
+    note,
+    status: 'confirmed',
+    createdAt: window._Timestamp.now()
+  };
+
+  try {
+    const docRef = await window._addDoc(window._col(window._db,'appointments'), booking);
+    booking._id = docRef.id;
+    state.lastBooking = { ...booking, dt };
+
+    // Save customer data
+    localStorage.setItem('customerData', JSON.stringify({ name, phone }));
+
+    // Build WA message and open immediately
+    const branch = state.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+    const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+    const msg = `היי מירית! 💅
+קבעתי תור דרך האפליקציה:
+
+👤 שם: ${name}
+📞 טלפון: ${phone}
+📍 סניף: ${branch}
+📅 תאריך: ${dateStr}
+⏰ שעה: ${timeStr}
+💅 טיפולים: ${state.services.join(' + ')}
+⏱ משך: ${state.totalDuration} דקות${booking.chips.length ? '\n📝 הערות: '+booking.chips.join(', ') : ''}${note ? '\n💬 '+note : ''}`;
+    openWA(MIRIT_WA, msg);
+
+    // Show success screen
+    const dateStrShort = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+    document.getElementById('success-summary').innerHTML = `
+      <div class="success-detail">📍 ${branch}</div>
+      <div class="success-meta" style="margin-bottom:8px">${dateStrShort} · ${timeStr}</div>
+      <div class="success-detail">💅 ${state.services.join(' + ')}</div>
+      <div class="success-meta">${state.totalDuration} דקות</div>`;
+
+    // Waze buttons
+    const wazeAddr = state.branch === 'rehovot' ? 'חיים קאופמן 8, רחובות' : 'קייזר סנטר, מודיעין';
+    const wazeLabel = state.branch === 'rehovot' ? 'רחובות · חיים קאופמן 8' : 'מודיעין · קייזר סנטר';
+    document.getElementById('success-waze-btns').innerHTML = `
+      <button class="btn" style="background:var(--rose-blush);color:var(--rose-gold-dark);border:1px solid var(--rose-gold-light);font-size:14px;padding:14px" onclick="openWaze('${wazeAddr}')">
+        📍 נווטי ל${wazeLabel}
+      </button>`;
+
+    goTo('screen-success');
+    state.screenHistory = [];
+  } catch(e) {
+    console.error(e);
+    showToast('שגיאה בשמירת התור. נסי שוב.');
+  }
+};
+
+// ===== HISTORY =====
+window.switchHistoryTab = function(type, el) {
+  document.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  loadHistory(type);
+};
+
+async function loadHistory(type = 'upcoming') {
+  const list = document.getElementById('history-list');
+  list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-mute)">טוענת...</div>';
+  try {
+    const phone = JSON.parse(localStorage.getItem('customerData') || '{}').phone;
+    if (!phone) { list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-mute)">אין תורים שמורים</div>'; return; }
+    const now = window._Timestamp.now();
+    const cond = type === 'upcoming'
+      ? window._where('datetime','>=',now)
+      : window._where('datetime','<',now);
+    const q = window._query(
+      window._col(window._db,'appointments'),
+      window._where('phone','==',phone),
+      cond,
+      window._orderBy('datetime', type==='upcoming' ? 'asc' : 'desc')
+    );
+    const snap = await window._getDocs(q);
+    if (snap.empty) {
+      list.innerHTML = `<div style="text-align:center;padding:30px;color:var(--ink-mute)">${type==='upcoming'?'אין תורים קרובים':'אין היסטוריה עדיין'}</div>`;
+      return;
+    }
+    list.innerHTML = snap.docs.map(d => {
+      const a = d.data();
+      const dt = a.datetime.toDate();
+      const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+      const isUpcoming = type === 'upcoming';
+      return `<div class="history-item">
+        <div class="history-date">
+          <div class="hd">${dt.getDate()}</div>
+          <div class="hm">${HEBREW_MONTHS[dt.getMonth()].slice(0,3)}</div>
+        </div>
+        <div class="history-info">
+          <div class="history-service">${a.services}</div>
+          <div class="history-meta">${branch} · ${dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})} · ${a.duration} דק'</div>
+        </div>
+        <div class="status-badge ${isUpcoming?'status-upcoming':'status-done'}">${isUpcoming?'קרוב':'בוצע'}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    console.error(e);
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-mute)">שגיאה בטעינה</div>';
+  }
+}
+
+// ===== MIRIT DASHBOARD =====
+window.miritNav = function(tab) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (tab === 'home') {
+    document.getElementById('nav-home').classList.add('active');
+    goTo('screen-mirit');
+    loadMiritDashboard();
+  } else if (tab === 'appts') {
+    document.getElementById('nav-appts').classList.add('active');
+    goTo('screen-mirit-appts');
+    loadMiritAppts();
+  } else if (tab === 'avail') {
+    document.getElementById('nav-avail').classList.add('active');
+    loadAvailability();
+    goTo('screen-availability');
+  }
+};
+
+window.logoutMirit = function() {
+  localStorage.removeItem('miritAdmin');
+  goTo('screen-welcome');
+  document.getElementById('mirit-nav').classList.remove('show');
+};
+
+async function loadMiritDashboard() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+  const weekEnd = new Date(today); weekEnd.setDate(today.getDate()+7);
+  const monthEnd = new Date(today.getFullYear(), today.getMonth()+1, 1);
+
+  document.getElementById('today-date-label').textContent =
+    today.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+
+  try {
+    const q = window._query(
+      window._col(window._db,'appointments'),
+      window._where('datetime','>=',window._Timestamp.fromDate(today)),
+      window._where('status','in',['pending','confirmed']),
+      window._orderBy('datetime','asc')
+    );
+    const snap = await window._getDocs(q);
+    const appts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+    const todayAppts = appts.filter(a => a.datetime.toDate() < tomorrow);
+    const weekAppts  = appts.filter(a => a.datetime.toDate() < weekEnd);
+    const monthAppts = appts.filter(a => a.datetime.toDate() < monthEnd);
+    const tomorrowAppts = appts.filter(a => {
+      const dt = a.datetime.toDate();
+      return dt >= tomorrow && dt < new Date(tomorrow.getTime()+86400000);
+    });
+
+    document.getElementById('stat-today').textContent = todayAppts.length;
+    document.getElementById('stat-week').textContent = weekAppts.length;
+    document.getElementById('stat-month').textContent = monthAppts.length;
+
+    // Reminder banner
+    const banner = document.getElementById('reminder-banner');
+    if (tomorrowAppts.length > 0) {
+      banner.style.display = 'flex';
+      document.getElementById('reminder-badge').textContent = tomorrowAppts.length;
+      document.getElementById('reminder-sub').textContent = `${tomorrowAppts.length} לקוחות מחר`;
+    } else {
+      banner.style.display = 'none';
+    }
+
+    // Today's list
+    const list = document.getElementById('mirit-today-list');
+    if (todayAppts.length === 0) {
+      list.innerHTML = '<div class="empty-day">אין תורים היום ✨</div>';
+    } else {
+      list.innerHTML = todayAppts.map((a,i) => {
+        const dt = a.datetime.toDate();
+        const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+        return `<div class="appt-card${i===0?' next':''}">
+          <div class="appt-time">
+            <div class="h">${timeStr}</div>
+            <div class="d">${a.duration} דק'</div>
+          </div>
+          <div class="appt-info">
+            <div class="appt-client display">${a.name}</div>
+            <div class="appt-service">${a.services}${a.note ? ' <span style="color:var(--rose-gold-dark);font-style:italic">· '+a.note+'</span>' : ''}</div>
+          </div>
+          <div class="appt-actions">
+            <div class="icon-btn" onclick="openWA('${a.phone}','היי ${a.name}!')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
+            </div>
+            <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    window._tomorrowAppts = tomorrowAppts;
+  } catch(e) {
+    console.error(e);
+    document.getElementById('mirit-today-list').innerHTML = '<div class="empty-day">שגיאה בטעינה</div>';
+  }
+}
+
+window.showReminders = function() {
+  const appts = window._tomorrowAppts || [];
+  if (!appts.length) return;
+  goTo('screen-reminders');
+  renderRemindersScreen(appts);
+};
+
+function buildReminderMsg(a) {
+  const dt = a.datetime.toDate();
+  const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+  const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+  return `ערב טוב ${a.name} אהובה 🌸 נפגשות מחר בשעה ${timeStr} ב${branch} לטיפול ${a.services}. מחכה לך! 💅 — מירית`;
+}
+
+function renderRemindersScreen(appts) {
+  const list = document.getElementById('reminders-list');
+  const sent = window._remindersSent || new Set();
+  list.innerHTML = appts.map((a, i) => {
+    const isSent = sent.has(a.id);
+    return `<div class="appt-card" style="margin-bottom:10px" id="reminder-card-${i}">
+      <div class="appt-info" style="flex:1">
+        <div class="appt-client display">${a.name}</div>
+        <div class="appt-service">${a.services} · ${a.branch === 'rehovot' ? 'רחובות' : 'מודיעין'}</div>
+        <div class="appt-service" style="font-size:11px;color:var(--ink-mute)">${a.datetime.toDate().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <button onclick="sendSingleReminder(${i})" id="remind-btn-${i}"
+        style="flex-shrink:0;padding:10px 14px;border-radius:14px;border:none;cursor:pointer;font-family:'Heebo',sans-serif;font-size:13px;font-weight:500;
+        background:${isSent ? 'rgba(122,155,110,0.15)' : 'linear-gradient(135deg,#25D366,#128C7E)'};
+        color:${isSent ? '#5a7a52' : 'white'};">
+        ${isSent ? '✓ נשלח' : '📲 שלחי'}
+      </button>
+    </div>`;
+  }).join('');
+  document.getElementById('reminders-count').textContent = `${appts.length} לקוחות מחר`;
+}
+
+window._remindersSent = new Set();
+window.sendSingleReminder = function(idx) {
+  const appts = window._tomorrowAppts || [];
+  const a = appts[idx];
+  if (!a) return;
+  const msg = buildReminderMsg(a);
+  openWA(a.phone, msg);
+  window._remindersSent.add(a.id);
+  const btn = document.getElementById(`remind-btn-${idx}`);
+  if (btn) {
+    btn.style.background = 'rgba(122,155,110,0.15)';
+    btn.style.color = '#5a7a52';
+    btn.textContent = '✓ נשלח';
+  }
+};
+
+// ===== MIRIT APPOINTMENTS LIST =====
+window.miritApptFilter = { branch: 'all', dateFrom: '', dateTo: '' };
+
+async function loadMiritAppts() {
+  const list = document.getElementById('mirit-appts-list');
+  list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-mute)">טוענת...</div>';
+  try {
+    const now = new Date(); now.setHours(0,0,0,0);
+    let q = window._query(
+      window._col(window._db,'appointments'),
+      window._where('datetime','>=',window._Timestamp.fromDate(now)),
+      window._where('status','in',['confirmed','pending']),
+      window._orderBy('datetime','asc')
+    );
+    const snap = await window._getDocs(q);
+    let appts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+    // Apply filters
+    const f = window.miritApptFilter;
+    if (f.branch !== 'all') appts = appts.filter(a => a.branch === f.branch);
+    if (f.dateFrom) {
+      const from = new Date(f.dateFrom); from.setHours(0,0,0,0);
+      appts = appts.filter(a => a.datetime.toDate() >= from);
+    }
+    if (f.dateTo) {
+      const to = new Date(f.dateTo); to.setHours(23,59,59,999);
+      appts = appts.filter(a => a.datetime.toDate() <= to);
+    }
+
+    if (appts.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-mute)">אין תורים</div>';
+      return;
+    }
+
+    list.innerHTML = appts.map(a => {
+      const dt = a.datetime.toDate();
+      const dateStr = dt.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
+      const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+      return `<div class="appt-card" style="margin-bottom:10px">
+        <div class="appt-time">
+          <div class="h">${timeStr}</div>
+          <div class="d">${dt.getDate()}/${dt.getMonth()+1}</div>
+        </div>
+        <div class="appt-info">
+          <div class="appt-client display">${a.name}</div>
+          <div class="appt-service">${a.services} · ${branch}</div>
+          <div class="appt-service" style="font-size:11px;color:var(--ink-mute)">${dateStr} · ${a.duration} דק'${a.note ? ' · '+a.note : ''}</div>
+        </div>
+        <div class="appt-actions">
+          <div class="icon-btn" onclick="openWA('${a.phone}','היי ${a.name}!')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
+          </div>
+          <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    console.error(e);
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-mute)">שגיאה בטעינה</div>';
+  }
+}
+
+window.miritCancelAppt = async function(id) {
+  if (!confirm('לבטל את התור?')) return;
+  try {
+    await window._updateDoc(window._doc(window._db,'appointments',id), {status:'cancelled'});
+    showToast('התור בוטל ✓');
+    loadMiritDashboard();
+    loadMiritAppts();
+  } catch(e) { showToast('שגיאה בביטול'); }
+};
+
+window.applyApptFilter = function() {
+  window.miritApptFilter.branch = document.getElementById('filter-branch').value;
+  window.miritApptFilter.dateFrom = document.getElementById('filter-from').value;
+  window.miritApptFilter.dateTo = document.getElementById('filter-to').value;
+  loadMiritAppts();
+};
+
+// ===== BLOCK HOURS =====
+window.showBlockModal = function() {
+  document.getElementById('block-modal').style.display = 'flex';
+  // Set default date to today
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('block-date').value = today;
+};
+window.closeBlockModal = function() {
+  document.getElementById('block-modal').style.display = 'none';
+};
+window.saveBlock = async function() {
+  const date = document.getElementById('block-date').value;
+  const from = document.getElementById('block-from').value;
+  const to   = document.getElementById('block-to').value;
+  const note = document.getElementById('block-note').value;
+  if (!date || !from || !to) { showToast('נא למלא תאריך ושעות'); return; }
+
+  const fromDt = new Date(`${date}T${from}:00`);
+  const toDt   = new Date(`${date}T${to}:00`);
+
+  try {
+    await window._addDoc(window._col(window._db,'blocked_slots'), {
+      date,
+      from: window._Timestamp.fromDate(fromDt),
+      to:   window._Timestamp.fromDate(toDt),
+      note: note || '',
+      createdAt: window._Timestamp.now()
+    });
+    showToast('השעות נחסמו בהצלחה ✓');
+    closeBlockModal();
+  } catch(e) {
+    showToast('שגיאה בשמירה');
+  }
+};
+
+// ===== AVAILABILITY =====
+const DEFAULT_HOURS = { start: '09:00', end: '17:00' };
+const BRANCH_WORK_DAYS = { rehovot: [0,2,4], modiin: [1,3] };
+const DAY_NAMES = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+
+window.switchAvailBranch = function(branch) {
+  state.availBranch = branch;
+  document.getElementById('avail-btn-rehovot').classList.toggle('active', branch==='rehovot');
+  document.getElementById('avail-btn-modiin').classList.toggle('active', branch==='modiin');
+  renderAvailDays();
+};
+
+function renderAvailDays() {
+  const branch = state.availBranch;
+  const avail = state.availability[branch] || {};
+  const workDays = BRANCH_WORK_DAYS[branch];
+  let html = '';
+
+  for (let d = 0; d <= 6; d++) {
+    const isWorkDay = workDays.includes(d);
+    const dayData = avail[d];
+    const isOpen = isWorkDay && dayData && dayData.open !== false;
+    const start = dayData?.start || '09:00';
+    const end   = dayData?.end   || (branch === 'modiin' ? '16:00' : '17:00');
+
+    html += `<div class="availability-day${!isOpen?' off':''}" id="avail-day-${d}">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="day-name display">${DAY_NAMES[d]}</div>
+          <div class="toggle${isOpen?' on':''}" onclick="toggleAvailDay(${d})" ${!isWorkDay?'style="opacity:0.3;pointer-events:none"':''}></div>
+        </div>
+        ${isOpen ? `
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+          <input type="time" value="${start}" class="input" style="flex:1;padding:10px 12px;font-size:14px"
+            onchange="updateAvailTime(${d},'start',this.value)">
+          <span style="color:var(--ink-mute);font-size:13px;flex-shrink:0">עד</span>
+          <input type="time" value="${end}" class="input" style="flex:1;padding:10px 12px;font-size:14px"
+            onchange="updateAvailTime(${d},'end',this.value)">
+        </div>` : `
+        <div class="day-hours off">${isWorkDay ? 'סגור ליום זה' : 'לא בסניף זה'}</div>`}
+      </div>
+    </div>`;
+  }
+
+  html += `<div style="margin-top:16px">
+    <button class="btn" style="background:var(--rose-blush);color:var(--rose-gold-dark);border:1px solid var(--rose-gold-light);font-size:14px;padding:14px" onclick="showBlockModal()">
+      🔒 חסמי שעה / הפסקה
+    </button>
+  </div>`;
+
+  document.getElementById('avail-days-list').innerHTML = html + '<div style="height:40px"></div>';
+}
+
+async function loadAvailability() {
+  try {
+    const ref = window._doc(window._db,'availability','settings');
+    const snap = await window._getDoc(ref);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.rehovot) state.availability.rehovot = data.rehovot;
+      if (data.modiin)  state.availability.modiin  = data.modiin;
+    } else {
+      // Init defaults
+      state.availability = {
+        rehovot: { 0:{open:true,start:'09:00',end:'17:00'}, 2:{open:true,start:'09:00',end:'18:00'}, 4:{open:true,start:'10:00',end:'16:00'} },
+        modiin:  { 1:{open:true,start:'09:00',end:'16:00'}, 3:{open:true,start:'09:00',end:'16:00'} }
+      };
+    }
+  } catch(e) { console.log(e); }
+  renderAvailDays();
+}
+
+window.toggleAvailDay = async function(day) {
+  const branch = state.availBranch;
+  if (!BRANCH_WORK_DAYS[branch].includes(day)) return;
+  const cur = state.availability[branch][day];
+  if (cur && cur.open) {
+    state.availability[branch][day] = { ...cur, open: false };
+  } else {
+    state.availability[branch][day] = { open: true, start: cur?.start || '09:00', end: cur?.end || (branch==='modiin'?'16:00':'17:00') };
+  }
+  renderAvailDays();
+  await saveAvailability();
+};
+
+window.updateAvailTime = async function(day, field, val) {
+  const branch = state.availBranch;
+  if (!state.availability[branch][day]) state.availability[branch][day] = { open:true, start:'09:00', end:'17:00' };
+  state.availability[branch][day][field] = val;
+  await saveAvailability();
+};
+
+async function saveAvailability() {
+  try {
+    await window._setDoc(window._doc(window._db,'availability','settings'), {
+      rehovot: state.availability.rehovot,
+      modiin:  state.availability.modiin
+    }, {merge:true});
+  } catch(e) { showToast('שגיאה בשמירה'); }
+}
+
+// ===== ADMIN LOGIN =====
+function showAdminModal() {
+  const m = document.getElementById('admin-modal');
+  m.style.display = 'flex';
+  setTimeout(() => document.getElementById('admin-password').focus(), 100);
+}
+function closeAdminModal() {
+  document.getElementById('admin-modal').style.display = 'none';
+  document.getElementById('admin-password').value = '';
+}
+window.closeAdminModal = closeAdminModal;
+window.checkAdminLogin = function() {
+  const pw = document.getElementById('admin-password').value;
+  if (pw === ADMIN_PASS) {
+    localStorage.setItem('miritAdmin','1');
+    closeAdminModal();
+    enterMiritMode();
+  } else {
+    showToast('סיסמה שגויה');
+  }
+};
+
+function enterMiritMode() {
+  document.getElementById('mirit-nav').classList.add('show');
+  goTo('screen-mirit');
+  loadMiritDashboard();
+}
+
+// ===== SECRET ADMIN TRIGGER =====
+// Triple-tap brand name on welcome screen
+let tapCount = 0, tapTimer;
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.brand-name').forEach(el => {
+    el.addEventListener('click', () => {
+      tapCount++;
+      clearTimeout(tapTimer);
+      if (tapCount >= 5) { tapCount=0; showAdminModal(); }
+      tapTimer = setTimeout(() => tapCount=0, 2000);
+    });
+  });
+});
+
+// ===== APP INIT =====
+function startApp() {
+  document.getElementById('loading').style.opacity = '0';
+  document.getElementById('loading').style.transition = 'opacity 0.5s';
+  setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 500);
+
+  // Check if Mirit is logged in
+  if (localStorage.getItem('miritAdmin') === '1') {
+    enterMiritMode();
+    return;
+  }
+
+  // Check install screen
+  const installSeen = localStorage.getItem('installSeen');
+  if (!installSeen && /iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone) {
+    goTo('screen-install');
+    return;
+  }
+
+  initCustomerFlow();
+}
+
+if (window._fbReady) {
+  startApp();
+} else {
+  document.addEventListener('fbReady', startApp);
+  // Fallback if Firebase loads slow
+  setTimeout(() => {
+    if (!document.querySelector('.screen.active')) startApp();
+  }, 4000);
+}
+</script>
+</body>
+</html>
