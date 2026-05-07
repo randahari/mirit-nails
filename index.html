@@ -1524,6 +1524,28 @@ window.submitBooking = async function() {
     booking._id = docRef.id;
     state.lastBooking = { ...booking, dt };
 
+    // Send to Make → Google Calendar
+    try {
+      const branch = state.branch === 'rehovot' ? 'רחובות - חיים קאופמן 8' : 'מודיעין - קייזר סנטר';
+      const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      fetch('https://hook.eu1.make.com/oi99znqb36jof3ctiydw7eray84cpo3s', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          phone,
+          branch,
+          services: state.services.join(' + '),
+          duration: state.totalDuration,
+          date: dateStr,
+          time: timeStr,
+          datetime_iso: dt.toISOString(),
+          appointment_id: docRef.id
+        })
+      }).catch(() => {});
+    } catch(e) {}
+
     // Save customer data
     localStorage.setItem('customerData', JSON.stringify({ name, phone }));
 
