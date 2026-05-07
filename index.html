@@ -939,11 +939,11 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
       <div style="display:flex;gap:10px">
         <div style="flex:1">
           <label class="input-label">משעה</label>
-          <input type="time" id="block-from" class="input" style="padding:14px 16px">
+          <input type="time" id="block-from" class="input" style="padding:14px 16px" step="1800">
         </div>
         <div style="flex:1">
           <label class="input-label">עד שעה</label>
-          <input type="time" id="block-to" class="input" style="padding:14px 16px">
+          <input type="time" id="block-to" class="input" style="padding:14px 16px" step="1800">
         </div>
       </div>
       <div>
@@ -1729,8 +1729,12 @@ window.showReminders = function() {
 function buildReminderMsg(a) {
   const dt = a.datetime.toDate();
   const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+  const firstName = a.name.split(' ')[0];
   const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
-  return `ערב טוב ${a.name} אהובה 🌸 נפגשות מחר בשעה ${timeStr} ב${branch} לטיפול ${a.services}. מחכה לך! 💅 — מירית`;
+  const wazeAddr = a.branch === 'rehovot'
+    ? 'https://waze.com/ul?q=חיים+קאופמן+8+רחובות&navigate=yes'
+    : 'https://waze.com/ul?q=קייזר+סנטר+מודיעין&navigate=yes';
+  return `ערב טוב ${firstName} 🌸 נפגשות מחר בשעה ${timeStr} ב${branch}. מחכה לך! 💅\n\n📍 ניווט לסניף: ${wazeAddr}\n\n— מירית`;
 }
 
 function renderRemindersScreen(appts) {
@@ -1921,10 +1925,10 @@ function renderAvailDays() {
         </div>
         ${isOpen ? `
         <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-          <input type="time" value="${start}" class="input" style="flex:1;padding:10px 12px;font-size:14px"
+          <input type="time" value="${start}" step="1800" class="input" style="flex:1;padding:10px 12px;font-size:14px"
             onchange="updateAvailTime(${d},'start',this.value)">
           <span style="color:var(--ink-mute);font-size:13px;flex-shrink:0">עד</span>
-          <input type="time" value="${end}" class="input" style="flex:1;padding:10px 12px;font-size:14px"
+          <input type="time" value="${end}" step="1800" class="input" style="flex:1;padding:10px 12px;font-size:14px"
             onchange="updateAvailTime(${d},'end',this.value)">
         </div>` : `
         <div class="day-hours off">${isWorkDay ? 'סגור ליום זה' : 'לא בסניף זה'}</div>`}
