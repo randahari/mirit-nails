@@ -1,7 +1,7 @@
 // Mirit Nails Service Worker
 // Strategy: cache-first for shell, network-first for index.html (so updates are quick)
 
-const VERSION = 'v3.2.0'; // Bump on every deploy
+const VERSION = 'v3.2.1'; // Bump on every deploy
 const CACHE_NAME = `mirit-nails-${VERSION}`;
 const SHELL = [
   './',
