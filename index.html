@@ -415,14 +415,15 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   content:'';position:absolute;top:-50px;right:-50px;
   width:140px;height:140px;
   background:radial-gradient(circle,var(--rose-gold-light),transparent);opacity:.5;
+  pointer-events:none;z-index:0;
 }
 .summary-row{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:10px 0;border-bottom:1px solid rgba(201,164,122,0.15);position:relative;
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:10px 0;border-bottom:1px solid rgba(201,164,122,0.15);position:relative;z-index:1;
 }
 .summary-row:last-child{border-bottom:none}
-.summary-label{font-size:12px;color:var(--ink-mute);font-weight:500}
-.summary-value{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;color:var(--ink)}
+.summary-label{font-size:12px;color:var(--ink-mute);font-weight:500;flex-shrink:0}
+.summary-value{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;color:var(--ink);text-align:left;min-width:0;word-break:break-word;flex:1}
 .form-block{padding:0 24px;display:flex;flex-direction:column;gap:16px;margin-bottom:20px}
 
 /* Chips */
@@ -1017,7 +1018,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
     <div class="success-sub">מירית תאשר את התור בהקדם. תקבלי אישור ב-WhatsApp.</div>
     <div class="success-card" id="success-summary"></div>
     <div id="success-waze-btns" style="display:flex;gap:10px;width:100%;margin-bottom:12px"></div>
-    <button class="btn btn-primary" onclick="goTo('screen-welcome')" style="margin-bottom:0">חזרה לדף הבית</button>
+    <button class="btn btn-primary" onclick="returnToWelcome()" style="margin-bottom:0">חזרה לדף הבית</button>
     <div style="margin-top:16px;padding:14px 16px;background:rgba(201,164,122,0.08);border:1px solid var(--rose-gold-light);border-radius:14px;width:100%;text-align:center">
       <div style="font-size:12px;color:var(--ink-mute);line-height:1.6">
         ⚠️ <strong style="color:var(--ink-soft)">מדיניות ביטול:</strong> ביטול תור בפחות מ-24 שעות לפני המועד<br>יחויב ב-50% מעלות הטיפול
@@ -1288,13 +1289,16 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     חזרה לדשבורד
   </div>
-  <div class="section-title">תזכורות אוטומטיות</div>
-  <div class="section-sub">המערכת שולחת תזכורות אוטומטית בכל ערב בשעה 19:00 לתורים של היום למחרת.</div>
+  <div class="section-title">תזכורות ללקוחות מחר</div>
+  <div class="section-sub">סמני אילו לקוחות תרצי לשלוח להן תזכורת ולחצי "שלחי תזכורות". ההודעה תישלח דרך WhatsApp.</div>
   <div style="padding:0 24px 16px;display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink-mute)">
-    <div id="reminders-status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--success)"></div>
     <span id="reminders-count">טוען...</span>
   </div>
-  <div style="padding:0 24px 100px" id="reminders-list"></div>
+  <div style="padding:0 24px 120px" id="reminders-list"></div>
+  <!-- Sticky bottom button -->
+  <div id="reminders-send-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(253,246,240,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--line);padding:14px 24px max(20px,env(safe-area-inset-bottom));z-index:90">
+    <button class="btn btn-primary" id="reminders-send-btn" onclick="sendAllReminders()" style="width:100%">שלחי תזכורות</button>
+  </div>
 </div>
 
 <!-- Cancellation policy modal (opens from consent link) -->
@@ -2326,6 +2330,16 @@ window.hidePolicyModal = function() {
   document.getElementById('policy-modal').classList.remove('show');
 };
 
+// Returns to welcome screen and reloads the customer's appointments
+window.returnToWelcome = function() {
+  goTo('screen-welcome');
+  // Reload the welcome screen with fresh data
+  const customerData = JSON.parse(localStorage.getItem('customerData') || '{}');
+  if (customerData.name) {
+    loadWelcomeScreen(customerData.name);
+  }
+};
+
 // ===== SUBMIT BOOKING =====
 window.submitBooking = async function() {
   const name = document.getElementById('input-name').value.trim();
@@ -2574,15 +2588,16 @@ async function loadMiritDashboard() {
     const banner = document.getElementById('reminder-banner');
     if (tomorrowAppts.length > 0) {
       banner.style.display = 'flex';
-      document.getElementById('reminder-badge').textContent = tomorrowAppts.length;
       const sentCount = tomorrowAppts.filter(a => a.reminderSent).length;
+      const pendingCount = tomorrowAppts.length - sentCount;
+      document.getElementById('reminder-badge').textContent = pendingCount > 0 ? pendingCount : '✓';
       const subEl = document.getElementById('reminder-sub');
       if (sentCount === tomorrowAppts.length) {
         subEl.textContent = `✓ כל ${tomorrowAppts.length} התזכורות נשלחו`;
       } else if (sentCount > 0) {
-        subEl.textContent = `${sentCount}/${tomorrowAppts.length} נשלחו · לחצי לפרטים`;
+        subEl.textContent = `${pendingCount} ממתינות לשליחה · לחצי לפרטים`;
       } else {
-        subEl.textContent = `${tomorrowAppts.length} לקוחות · ישלח אוטומטית ב-19:00`;
+        subEl.textContent = `${tomorrowAppts.length} לקוחות · לחצי לשלוח תזכורות`;
       }
     } else {
       banner.style.display = 'none';
@@ -2721,10 +2736,15 @@ window.showReminders = function() {
   loadRemindersLog();
 };
 
+window._tomorrowAppts = [];
+window._reminderSelections = {};
+
 async function loadRemindersLog() {
   const list = document.getElementById('reminders-list');
   const countEl = document.getElementById('reminders-count');
+  const sendBar = document.getElementById('reminders-send-bar');
   list.innerHTML = '<div class="empty-day">טוענת...</div>';
+  sendBar.style.display = 'none';
 
   try {
     const today = new Date(); today.setHours(0,0,0,0);
@@ -2740,50 +2760,151 @@ async function loadRemindersLog() {
     );
     const snap = await window._getDocs(q);
     const appts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    window._tomorrowAppts = appts;
 
     if (appts.length === 0) {
-      countEl.textContent = 'אין תורים מחר — לא יישלחו תזכורות';
+      countEl.textContent = 'אין תורים מחר';
       list.innerHTML = '<div class="empty-day">אין תורים מחר ✨</div>';
       return;
     }
 
-    const sentCount = appts.filter(a => a.reminderSent).length;
-    if (sentCount === appts.length) {
-      countEl.textContent = `כל ${appts.length} התזכורות נשלחו ✓`;
-    } else if (sentCount > 0) {
-      countEl.textContent = `${sentCount} מתוך ${appts.length} תזכורות נשלחו`;
-    } else {
-      countEl.textContent = `${appts.length} תזכורות מתוזמנות להישלח היום ב-19:00`;
-    }
+    // Default: select all who haven't been sent yet
+    window._reminderSelections = {};
+    appts.forEach(a => {
+      window._reminderSelections[a.id] = !a.reminderSent;
+    });
 
-    list.innerHTML = appts.map(a => {
-      const dt = a.datetime.toDate();
-      const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-      const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
-      let statusBadge;
-      if (a.reminderSent && a.reminderSentAt) {
-        const sentAt = a.reminderSentAt.toDate ? a.reminderSentAt.toDate() : new Date(a.reminderSentAt);
-        const sentTime = sentAt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-        statusBadge = `<div style="flex-shrink:0;padding:8px 12px;border-radius:12px;background:rgba(122,155,110,0.15);color:#5a7a52;font-size:12px;font-weight:500">✓ ${sentTime}</div>`;
-      } else if (a.reminderSent) {
-        statusBadge = `<div style="flex-shrink:0;padding:8px 12px;border-radius:12px;background:rgba(122,155,110,0.15);color:#5a7a52;font-size:12px;font-weight:500">✓ נשלח</div>`;
-      } else {
-        statusBadge = `<div style="flex-shrink:0;padding:8px 12px;border-radius:12px;background:rgba(201,164,122,0.12);color:var(--rose-gold-dark);font-size:12px;font-weight:500">⏰ ממתין</div>`;
-      }
-      return `<div class="appt-card compact" style="margin-bottom:10px">
-        <div class="appt-info" style="flex:1">
-          <div class="appt-client display">${a.name}</div>
-          <div class="appt-service">${a.services} · ${branch}</div>
-          <div class="appt-service" style="font-size:11px;color:var(--ink-mute)">${timeStr} · ${a.phone}</div>
-        </div>
-        ${statusBadge}
-      </div>`;
-    }).join('');
+    renderRemindersList();
+    updateRemindersSendBar();
   } catch(e) {
     console.error(e);
     list.innerHTML = '<div class="empty-day">שגיאה בטעינה</div>';
   }
 }
+
+function renderRemindersList() {
+  const list = document.getElementById('reminders-list');
+  const appts = window._tomorrowAppts;
+  const countEl = document.getElementById('reminders-count');
+
+  const sentCount = appts.filter(a => a.reminderSent).length;
+  const pendingCount = appts.length - sentCount;
+  if (sentCount === appts.length) {
+    countEl.textContent = `כל ${appts.length} התזכורות נשלחו ✓`;
+  } else {
+    countEl.textContent = `${appts.length} תורים מחר · ${sentCount} כבר נשלחו · ${pendingCount} ממתינים`;
+  }
+
+  list.innerHTML = appts.map(a => {
+    const dt = a.datetime.toDate();
+    const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+    const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+    const isSelected = window._reminderSelections[a.id];
+    const alreadySent = a.reminderSent;
+    let trailing;
+    if (alreadySent) {
+      const sentTime = a.reminderSentAt && a.reminderSentAt.toDate
+        ? a.reminderSentAt.toDate().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})
+        : '';
+      trailing = `<div style="flex-shrink:0;padding:8px 12px;border-radius:12px;background:rgba(122,155,110,0.15);color:#5a7a52;font-size:12px;font-weight:500">✓ נשלח${sentTime ? ' '+sentTime : ''}</div>`;
+    } else {
+      trailing = `<div class="consent-check${isSelected?' checked':''}" style="margin:0;cursor:pointer" onclick="event.stopPropagation();toggleReminderSelection('${a.id}')"></div>`;
+    }
+    return `<div class="appt-card compact" style="margin-bottom:10px;${alreadySent?'opacity:.65':''}" ${alreadySent?'':`onclick="toggleReminderSelection('${a.id}')"`}>
+      <div class="appt-info" style="flex:1">
+        <div class="appt-client display">${a.name}</div>
+        <div class="appt-service">${a.services} · ${branch}</div>
+        <div class="appt-service" style="font-size:11px;color:var(--ink-mute)">${timeStr} · ${a.phoneRaw || a.phone}</div>
+      </div>
+      ${trailing}
+    </div>`;
+  }).join('');
+}
+
+window.toggleReminderSelection = function(id) {
+  window._reminderSelections[id] = !window._reminderSelections[id];
+  renderRemindersList();
+  updateRemindersSendBar();
+};
+
+function updateRemindersSendBar() {
+  const sendBar = document.getElementById('reminders-send-bar');
+  const sendBtn = document.getElementById('reminders-send-btn');
+  const selectedCount = Object.values(window._reminderSelections).filter(Boolean).length;
+  if (selectedCount === 0) {
+    sendBar.style.display = 'none';
+    return;
+  }
+  sendBar.style.display = 'block';
+  sendBtn.textContent = `שלחי ${selectedCount} תזכורות`;
+  sendBtn.style.opacity = '1';
+  sendBtn.style.pointerEvents = 'all';
+}
+
+window.sendAllReminders = async function() {
+  const sendBtn = document.getElementById('reminders-send-btn');
+  const selectedIds = Object.keys(window._reminderSelections).filter(id => window._reminderSelections[id]);
+  if (selectedIds.length === 0) return;
+
+  if (!confirm(`לשלוח ${selectedIds.length} תזכורות?\n\nההודעות יישלחו דרך WhatsApp ללקוחות.`)) return;
+
+  sendBtn.style.opacity = '0.5';
+  sendBtn.style.pointerEvents = 'none';
+  sendBtn.textContent = 'שולחת...';
+
+  let sent = 0;
+  let failed = 0;
+  const appts = window._tomorrowAppts;
+  for (const id of selectedIds) {
+    const a = appts.find(x => x.id === id);
+    if (!a) continue;
+    try {
+      const dt = a.datetime.toDate();
+      const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+      const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      const firstName = (a.name || '').split(' ')[0];
+      const branchFull = a.branch === 'rehovot' ? 'רחובות - חיים קאופמן 8' : 'מודיעין - קייזר סנטר';
+      const phoneToSend = normalizePhoneForStorage(a.phone || a.phoneRaw);
+      const msg = `שלום ${firstName} 🌸\n\nתזכורת חמודה לתור שלך מחר:\n\n📅 ${dateStr}\n⏰ שעה: ${timeStr}\n💎 טיפול: ${a.services}\n📍 ${branchFull}\n\n⚠️ מדיניות ביטולים: ביטול עד 24 שעות לפני התור — חינם.\nביטול בפחות מ-24 שעות — 50% מעלות הטיפול.\n\nמצפה לראותך! ✨\n\n${MIRIT_SIGNATURE}`;
+
+      const res = await fetch(GREEN_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: `${phoneToSend}@c.us`, message: msg })
+      });
+      if (res.ok) {
+        sent++;
+        // Mark in Firestore
+        try {
+          await window._updateDoc(window._doc(window._db,'appointments',id), {
+            reminderSent: true,
+            reminderSentAt: window._Timestamp.now()
+          });
+          a.reminderSent = true;
+          a.reminderSentAt = { toDate: () => new Date() };
+          window._reminderSelections[id] = false;
+        } catch(e) {}
+      } else {
+        failed++;
+      }
+    } catch(e) {
+      failed++;
+    }
+  }
+
+  // Refresh
+  renderRemindersList();
+  updateRemindersSendBar();
+  if (failed === 0) {
+    showToast(`✓ נשלחו ${sent} תזכורות`);
+  } else {
+    showToast(`נשלחו ${sent}, נכשלו ${failed}`);
+  }
+  sendBtn.style.opacity = '1';
+  sendBtn.style.pointerEvents = 'all';
+  // Refresh dashboard banner counts
+  if (typeof loadMiritDashboard === 'function') loadMiritDashboard();
+};
 
 // ===== MIRIT APPOINTMENTS LIST =====
 window.miritApptFilter = { branch: 'all', dateFrom: '', dateTo: '' };
