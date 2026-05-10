@@ -409,11 +409,11 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 .summary-card{
   background:linear-gradient(135deg,#fff 0%,var(--rose-blush) 100%);
   border:1px solid var(--rose-gold-light);border-radius:22px;
-  padding:8px 22px;margin:0 24px 20px;position:relative;overflow:hidden;
+  padding:16px 22px 8px;margin:0 24px 20px;position:relative;
 }
 .summary-card::before{
-  content:'';position:absolute;top:-50px;right:-50px;
-  width:140px;height:140px;
+  content:'';position:absolute;top:0;right:-30px;
+  width:100px;height:100px;
   background:radial-gradient(circle,var(--rose-gold-light),transparent);opacity:.5;
   pointer-events:none;z-index:0;
 }
@@ -2291,7 +2291,7 @@ window.goToDetails = function() {
       <div class="summary-label">שעה</div>
       <div class="summary-value">${state.selectedTime}</div>
     </div>
-    <div class="summary-row">
+    <div class="summary-row" style="display:none">
       <div class="summary-label">משך</div>
       <div class="summary-value">${state.totalDuration} דקות</div>
     </div>`;
