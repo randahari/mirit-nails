@@ -1447,6 +1447,14 @@ const SERVICES_DATA = [
   { name: 'צביעת גבות', duration: 15, group: 'טיפולי פנים' }
 ];
 
+// ===== Phone normalization =====
+// Stores phone as digits only, with 972 prefix (e.g., "0501234567" → "972501234567").
+// Used both when saving and when querying — guarantees customer always finds her appointment.
+function normalizePhoneForStorage(raw) {
+  if (!raw) return '';
+  return String(raw).replace(/\D/g,'').replace(/^972/, '972').replace(/^0/, '972');
+}
+
 // Make webhooks
 const WEBHOOK_BOOKING = 'https://hook.eu1.make.com/oi99znqb36jof3ctiydw7eray84cpo3s';
 const WEBHOOK_CANCEL  = 'https://hook.eu1.make.com/REPLACE_WITH_CANCEL_WEBHOOK_URL';
@@ -1549,7 +1557,8 @@ async function loadWelcomeScreen(name) {
 
   // Load next appointment
   try {
-    const phone = JSON.parse(localStorage.getItem('customerData') || '{}').phone || '';
+    const phoneRaw = JSON.parse(localStorage.getItem('customerData') || '{}').phone || '';
+    const phone = normalizePhoneForStorage(phoneRaw);
     if (phone && window._db) {
       const q = window._query(
         window._col(window._db, 'appointments'),
@@ -1975,7 +1984,8 @@ window.checkManualForm = function() {
 
 window.submitManualBooking = async function() {
   const name = document.getElementById('mb-name').value.trim();
-  const phone = document.getElementById('mb-phone').value.trim();
+  const phoneRaw = document.getElementById('mb-phone').value.trim();
+  const phone = normalizePhoneForStorage(phoneRaw);
   const note = document.getElementById('mb-note').value.trim();
   const ms = window._manualState;
   const submitBtn = document.getElementById('mb-submit');
@@ -1990,6 +2000,7 @@ window.submitManualBooking = async function() {
   const booking = {
     name,
     phone,
+    phoneRaw,
     branch: ms.branch,
     services: ms.services.join(' + '),
     duration: ms.totalDuration,
@@ -2025,6 +2036,17 @@ window.submitManualBooking = async function() {
           appointment_id: docRef.id,
           created_by_mirit: true
         })
+      }).then(async (res) => {
+        try {
+          const text = await res.text();
+          let eventId = null;
+          try { eventId = (JSON.parse(text) || {}).event_id || null; } catch(e) {
+            if (text && text.length < 200 && !text.includes('Accepted')) eventId = text.trim();
+          }
+          if (eventId) {
+            window._updateDoc(window._doc(window._db,'appointments',docRef.id), { eventId }).catch(() => {});
+          }
+        } catch(e) {}
       }).catch(() => {});
     } catch(e) {}
 
@@ -2307,7 +2329,8 @@ window.hidePolicyModal = function() {
 // ===== SUBMIT BOOKING =====
 window.submitBooking = async function() {
   const name = document.getElementById('input-name').value.trim();
-  const phone = document.getElementById('input-phone').value.trim();
+  const phoneRaw = document.getElementById('input-phone').value.trim();
+  const phone = normalizePhoneForStorage(phoneRaw);
   const note = document.getElementById('input-note').value.trim();
   const chips = state.chips.slice();
 
@@ -2318,6 +2341,7 @@ window.submitBooking = async function() {
   const booking = {
     name,
     phone,
+    phoneRaw, // keep original for display
     branch: state.branch,
     services: state.services.join(' + '),
     duration: state.totalDuration,
@@ -2337,7 +2361,7 @@ window.submitBooking = async function() {
     booking._id = docRef.id;
     state.lastBooking = { ...booking, dt };
 
-    // Send to Make → Google Calendar (Make writes eventId back to Firestore)
+    // Send to Make → Google Calendar (Make returns eventId in response, we save to Firestore)
     try {
       const branch = state.branch === 'rehovot' ? 'רחובות - חיים קאופמן 8' : 'מודיעין - קייזר סנטר';
       const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -2356,6 +2380,19 @@ window.submitBooking = async function() {
           datetime_iso: dt.toISOString(),
           appointment_id: docRef.id
         })
+      }).then(async (res) => {
+        // Make should return JSON with event_id field. Save it to Firestore for cancellation later.
+        try {
+          const text = await res.text();
+          let eventId = null;
+          try { eventId = (JSON.parse(text) || {}).event_id || null; } catch(e) {
+            // Make may return plain text — accept that too
+            if (text && text.length < 200 && !text.includes('Accepted')) eventId = text.trim();
+          }
+          if (eventId) {
+            window._updateDoc(window._doc(window._db,'appointments',docRef.id), { eventId }).catch(() => {});
+          }
+        } catch(e) {}
       }).catch(() => {}); // שגיאה שקטה — לא חוסמת את הלקוחה
     } catch(e) {}
 
@@ -2419,7 +2456,8 @@ async function loadHistory(type = 'upcoming') {
   const list = document.getElementById('history-list');
   list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-mute)">טוענת...</div>';
   try {
-    const phone = JSON.parse(localStorage.getItem('customerData') || '{}').phone;
+    const phoneRaw = JSON.parse(localStorage.getItem('customerData') || '{}').phone;
+    const phone = normalizePhoneForStorage(phoneRaw);
     if (!phone) { list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-mute)">אין תורים שמורים</div>'; return; }
     const now = window._Timestamp.now();
     const cond = type === 'upcoming'
@@ -2441,16 +2479,21 @@ async function loadHistory(type = 'upcoming') {
       const dt = a.datetime.toDate();
       const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
       const isUpcoming = type === 'upcoming';
+      const isCancelled = a.status === 'cancelled';
+      let statusBadge;
+      if (isCancelled) statusBadge = `<div class="status-badge" style="background:rgba(196,122,122,0.12);color:var(--danger)">בוטל</div>`;
+      else if (isUpcoming) statusBadge = `<div class="status-badge status-upcoming" onclick="cancelAppt('${d.id}')" style="cursor:pointer">בטלי</div>`;
+      else statusBadge = `<div class="status-badge status-done">בוצע</div>`;
       return `<div class="history-item">
         <div class="history-date">
           <div class="hd">${dt.getDate()}</div>
           <div class="hm">${HEBREW_MONTHS[dt.getMonth()].slice(0,3)}</div>
         </div>
         <div class="history-info">
-          <div class="history-service">${a.services}</div>
+          <div class="history-service">${a.services}${a.createdByMirit && isUpcoming ? ' <span style="font-size:10px;color:var(--rose-gold-dark);background:rgba(201,164,122,0.12);padding:2px 6px;border-radius:8px;margin-right:4px">קבעה מירית</span>' : ''}</div>
           <div class="history-meta">${branch} · ${dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})} · ${a.duration} דק'</div>
         </div>
-        <div class="status-badge ${isUpcoming?'status-upcoming':'status-done'}">${isUpcoming?'קרוב':'בוצע'}</div>
+        ${statusBadge}
       </div>`;
     }).join('');
   } catch(e) {
@@ -2574,13 +2617,14 @@ function renderApptList(containerId, appts, opts = {}) {
     const dt = a.datetime.toDate();
     const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
     const cls = `appt-card${highlightFirst && i===0 ? ' next' : ''}${compact ? ' compact' : ''}`;
+    const badge = a.createdByMirit ? ' <span style="font-size:10px;color:var(--rose-gold-dark);background:rgba(201,164,122,0.15);padding:2px 7px;border-radius:8px;margin-right:5px;font-weight:500">ידני</span>' : '';
     return `<div class="${cls}">
       <div class="appt-time">
         <div class="h">${timeStr}</div>
         <div class="d">${a.duration} דק'</div>
       </div>
       <div class="appt-info">
-        <div class="appt-client display">${a.name}</div>
+        <div class="appt-client display">${a.name}${badge}</div>
         <div class="appt-service">${a.services}${a.note ? ' <span style="color:var(--rose-gold-dark);font-style:italic">· '+a.note+'</span>' : ''}</div>
       </div>
       <div class="appt-actions">
@@ -2633,13 +2677,14 @@ function renderWeekGrouped(containerId, appts, startDate) {
         ${g.items.map(a => {
           const adt = a.datetime.toDate();
           const timeStr = adt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+          const badge = a.createdByMirit ? ' <span style="font-size:9px;color:var(--rose-gold-dark);background:rgba(201,164,122,0.15);padding:1px 6px;border-radius:7px;margin-right:4px;font-weight:500">ידני</span>' : '';
           return `<div class="appt-card compact">
             <div class="appt-time">
               <div class="h">${timeStr}</div>
               <div class="d">${a.duration} דק'</div>
             </div>
             <div class="appt-info">
-              <div class="appt-client display">${a.name}</div>
+              <div class="appt-client display">${a.name}${badge}</div>
               <div class="appt-service">${a.services} · ${a.branch === 'rehovot' ? 'רחובות' : 'מודיעין'}</div>
             </div>
             <div class="appt-actions">
@@ -3140,16 +3185,13 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
       .then((reg) => {
-        // Listen for updates
+        // Silently activate any new SW
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           if (!newWorker) return;
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // A new SW is waiting — there's an update available
-              // Tell user via toast (non-intrusive)
-              showToast('גרסה חדשה זמינה — תיכנס שוב לפעולה');
-              // Activate the new SW
+              // New SW ready — activate silently
               newWorker.postMessage({ type: 'SKIP_WAITING' });
             }
           });
@@ -3158,13 +3200,12 @@ if ('serviceWorker' in navigator) {
       .catch(() => {});
   });
 
-  // When the new SW takes over — reload to use it (silent)
+  // When the new SW takes over — reload silently
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (refreshing) return;
     refreshing = true;
-    // Soft reload — use timeout so any toast is visible briefly
-    setTimeout(() => location.reload(), 1500);
+    location.reload();
   });
 }
 </script>
