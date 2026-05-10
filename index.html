@@ -87,6 +87,64 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 
 .divider{height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:20px 0}
 
+/* ===== Consent checkbox ===== */
+.consent-row{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:14px 16px;background:rgba(201,164,122,0.06);
+  border:1px solid var(--rose-gold-light);border-radius:14px;
+  cursor:pointer;transition:all .2s;
+}
+.consent-row:active{transform:scale(.99)}
+.consent-check{
+  flex-shrink:0;width:22px;height:22px;border-radius:6px;
+  border:2px solid var(--rose-gold);background:var(--white);
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;margin-top:1px;
+}
+.consent-check.checked{background:var(--rose-gold);border-color:var(--rose-gold)}
+.consent-check.checked::after{
+  content:'';width:6px;height:11px;
+  border:solid var(--white);border-width:0 2px 2px 0;
+  transform:rotate(45deg);margin-bottom:3px;
+}
+.consent-text{font-size:13px;color:var(--ink-soft);line-height:1.5;flex:1}
+.consent-link{color:var(--rose-gold-dark);text-decoration:underline;font-weight:500;cursor:pointer}
+
+/* ===== Cancel & Policy modals ===== */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(61,47,36,0.65);backdrop-filter:blur(8px);
+  z-index:600;align-items:center;justify-content:center;padding:24px;
+}
+.modal-overlay.show{display:flex}
+.modal-card{
+  background:var(--cream);border-radius:28px;padding:28px 24px;
+  width:100%;max-width:380px;box-shadow:var(--shadow-lg);
+  max-height:85vh;overflow-y:auto;
+}
+.modal-card::-webkit-scrollbar{display:none}
+.modal-title{
+  font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:500;
+  color:var(--ink);text-align:center;margin-bottom:8px;
+}
+.modal-title.warn{color:var(--danger)}
+.modal-icon{
+  width:64px;height:64px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 16px;font-size:32px;
+}
+.modal-icon.warn{background:rgba(196,122,122,0.12);color:var(--danger)}
+.modal-icon.info{background:rgba(201,164,122,0.12);color:var(--rose-gold-dark)}
+.modal-body{font-size:14px;color:var(--ink-soft);line-height:1.6;text-align:center;margin-bottom:20px}
+.modal-body strong{color:var(--ink)}
+.modal-body .policy-block{
+  background:rgba(201,164,122,0.08);border:1px solid var(--rose-gold-light);
+  border-radius:14px;padding:14px;margin-top:12px;text-align:right;font-size:13px;
+}
+.modal-actions{display:flex;flex-direction:column;gap:10px}
+.modal-actions.row{flex-direction:row}
+.modal-actions.row > *{flex:1}
+
 .brand-header{text-align:center;padding:28px 24px 20px;position:relative}
 .brand-header::after{content:'';position:absolute;bottom:0;right:50%;transform:translateX(50%);width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--rose-gold),transparent)}
 .brand-name{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:500;color:var(--ink);letter-spacing:0.02em}
@@ -481,6 +539,47 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 }
 .empty-day{text-align:center;padding:30px;color:var(--ink-mute);font-size:14px}
 
+/* ===== Section navigation tabs (Today / Tomorrow / Week) ===== */
+.dash-tabs{
+  display:flex;background:rgba(255,255,255,0.7);padding:4px;
+  border-radius:14px;border:1px solid var(--line);
+  margin:8px 24px 20px;gap:4px;
+}
+.dash-tab{
+  flex:1;padding:10px 8px;text-align:center;cursor:pointer;
+  border-radius:10px;font-size:13px;font-weight:500;color:var(--ink-mute);
+  transition:all .2s;
+}
+.dash-tab.active{
+  background:linear-gradient(135deg,var(--rose-gold),var(--rose-gold-dark));
+  color:white;box-shadow:var(--shadow-soft);
+}
+.dash-tab .count{
+  display:inline-block;margin-right:4px;
+  font-family:'Cormorant Garamond',serif;font-weight:600;
+}
+
+/* ===== Week section: grouped by day ===== */
+.week-day-group{margin-bottom:20px}
+.week-day-header{
+  display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:0 4px;
+}
+.week-day-name{
+  font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;color:var(--ink);
+}
+.week-day-date{font-size:12px;color:var(--ink-mute)}
+.week-day-line{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.week-day-count{
+  background:rgba(201,164,122,0.12);color:var(--rose-gold-dark);
+  font-size:11px;padding:3px 8px;border-radius:999px;font-weight:500;
+}
+/* Smaller appt-card for week view */
+.appt-card.compact{padding:10px}
+.appt-card.compact .appt-time{padding:8px 10px;min-width:52px}
+.appt-card.compact .appt-time .h{font-size:16px}
+.appt-card.compact .appt-client{font-size:15px}
+.appt-card.compact .appt-service{font-size:11px}
+
 /* ===== SCREEN: AVAILABILITY ===== */
 .branch-toggle{
   display:flex;background:rgba(255,255,255,0.7);padding:4px;
@@ -872,6 +971,12 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
       <label class="input-label">הערה חופשית (אופציונלי)</label>
       <textarea class="input" id="input-note" rows="3" placeholder="כל מה שחשוב שמירית תדע..." style="resize:none;padding-top:14px"></textarea>
     </div>
+    <div class="consent-row" onclick="toggleConsent()">
+      <div class="consent-check" id="consent-check"></div>
+      <div class="consent-text">
+        קראתי ואני מסכימה ל<span class="consent-link" onclick="event.stopPropagation();showPolicyModal()">מדיניות הביטולים</span>
+      </div>
+    </div>
   </div>
   <div class="sticky-bottom">
     <button class="btn btn-primary" id="details-submit-btn" onclick="submitBooking()" style="opacity:.4;pointer-events:none">
@@ -986,7 +1091,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
       <div class="stat-label">החודש</div>
     </div>
   </div>
-  <div class="reminder-banner" id="reminder-banner" onclick="showReminders()" style="display:none">
+  <div class="reminder-banner" id="reminder-banner" onclick="window.showReminders()" style="display:none">
     <div class="reminder-icon">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     </div>
@@ -996,7 +1101,22 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
     </div>
     <div class="reminder-badge" id="reminder-badge">0</div>
   </div>
-  <div class="today-section">
+
+  <!-- Tabs: Today / Tomorrow / Week -->
+  <div class="dash-tabs">
+    <div class="dash-tab active" id="dash-tab-today" onclick="switchDashTab('today')">
+      היום <span class="count" id="dash-tab-today-count">0</span>
+    </div>
+    <div class="dash-tab" id="dash-tab-tomorrow" onclick="switchDashTab('tomorrow')">
+      מחר <span class="count" id="dash-tab-tomorrow-count">0</span>
+    </div>
+    <div class="dash-tab" id="dash-tab-week" onclick="switchDashTab('week')">
+      השבוע <span class="count" id="dash-tab-week-count">0</span>
+    </div>
+  </div>
+
+  <!-- Today section -->
+  <div class="today-section" id="dash-today-section">
     <div class="today-header">
       <div class="today-title display">תורים היום</div>
       <div class="today-date" id="today-date-label"></div>
@@ -1005,6 +1125,29 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
       <div class="empty-day">טוען...</div>
     </div>
   </div>
+
+  <!-- Tomorrow section -->
+  <div class="today-section" id="dash-tomorrow-section" style="display:none">
+    <div class="today-header">
+      <div class="today-title display">תורים מחר</div>
+      <div class="today-date" id="tomorrow-date-label"></div>
+    </div>
+    <div class="appt-list" id="mirit-tomorrow-list">
+      <div class="empty-day">טוען...</div>
+    </div>
+  </div>
+
+  <!-- Week section -->
+  <div class="today-section" id="dash-week-section" style="display:none">
+    <div class="today-header">
+      <div class="today-title display">השבוע הקרוב</div>
+      <div class="today-date" id="week-range-label"></div>
+    </div>
+    <div id="mirit-week-list">
+      <div class="empty-day">טוען...</div>
+    </div>
+  </div>
+
   <div style="height:90px"></div>
 </div>
 
@@ -1051,9 +1194,58 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     חזרה לדשבורד
   </div>
-  <div class="section-title">תזכורות למחר</div>
-  <div class="section-sub" id="reminders-count">טוען...</div>
+  <div class="section-title">תזכורות אוטומטיות</div>
+  <div class="section-sub">המערכת שולחת תזכורות אוטומטית בכל ערב בשעה 19:00 לתורים של היום למחרת.</div>
+  <div style="padding:0 24px 16px;display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink-mute)">
+    <div id="reminders-status-dot" style="width:8px;height:8px;border-radius:50%;background:var(--success)"></div>
+    <span id="reminders-count">טוען...</span>
+  </div>
   <div style="padding:0 24px 100px" id="reminders-list"></div>
+</div>
+
+<!-- Cancellation policy modal (opens from consent link) -->
+<div class="modal-overlay" id="policy-modal">
+  <div class="modal-card">
+    <div class="modal-icon info">📋</div>
+    <div class="modal-title">מדיניות ביטולים</div>
+    <div class="modal-body">
+      <div class="policy-block">
+        <strong>ביטול חינם</strong> — עד 24 שעות לפני התור<br><br>
+        <strong>ביטול מאוחר</strong> — בפחות מ-24 שעות לפני התור<br>
+        כרוך בדמי ביטול בסך <strong>50% מעלות הטיפול</strong>, שייגבו בתור הבא.<br><br>
+        <strong>אי-הגעה</strong> — חיוב מלא של הטיפול.
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="hidePolicyModal()">הבנתי</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel appointment confirmation modal (customer side) -->
+<div class="modal-overlay" id="cancel-modal">
+  <div class="modal-card">
+    <div class="modal-icon" id="cancel-modal-icon">❓</div>
+    <div class="modal-title" id="cancel-modal-title">לבטל את התור?</div>
+    <div class="modal-body" id="cancel-modal-body"></div>
+    <div class="modal-actions row">
+      <button class="btn btn-ghost" onclick="hideCancelModal()" style="flex:1">חזרה</button>
+      <button class="btn btn-danger" id="cancel-modal-confirm" style="flex:2">בטלי תור</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mirit cancel confirmation modal -->
+<div class="modal-overlay" id="mirit-cancel-modal">
+  <div class="modal-card">
+    <div class="modal-icon warn">⚠️</div>
+    <div class="modal-title">ביטול תור</div>
+    <div class="modal-body" id="mirit-cancel-body"></div>
+    <div class="modal-actions row">
+      <button class="btn btn-ghost" onclick="hideMiritCancelModal()" style="flex:1">חזרה</button>
+      <button class="btn btn-danger" id="mirit-cancel-confirm" style="flex:2">בטלי תור</button>
+    </div>
+  </div>
 </div>
 
 <!-- Admin login modal -->
@@ -1142,8 +1334,15 @@ const state = {
   lastBooking: null,
 };
 
-const ADMIN_PASS = 'mirit2024';
+const ADMIN_PASS = 'MiritGolan!2026';
 const MIRIT_WA = '972504488463';
+
+// Make webhooks
+const WEBHOOK_BOOKING = 'https://hook.eu1.make.com/oi99znqb36jof3ctiydw7eray84cpo3s';
+const WEBHOOK_CANCEL  = 'https://hook.eu1.make.com/REPLACE_WITH_CANCEL_WEBHOOK_URL';
+
+// Green API (used for client-side fallback messaging)
+const GREEN_API_URL = 'https://7107.api.greenapi.com/waInstance7107612855/sendMessage/89672fbea0b24b868d2073e7b552ddeaedb3a882bfd441caa6';
 
 const HEBREW_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 const HEBREW_DAYS_SHORT = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
@@ -1284,14 +1483,134 @@ window.addToCalendar = function(title, iso, dur) {
   window.location.href = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('תור - ' + title + ' - מירית')}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent('Mirit Professional Nail Care')}`;
 };
 
+// ===== CANCEL APPOINTMENT (CUSTOMER) =====
+// Stores the appointment being cancelled while modal is open
+window._pendingCancel = null;
+
 window.cancelAppt = async function(id) {
-  if (!confirm('לבטל את התור?')) return;
+  // Fetch appointment details to determine if it's a late cancellation
   try {
-    await window._updateDoc(window._doc(window._db,'appointments',id), {status:'cancelled'});
-    showToast('התור בוטל');
-    loadWelcomeScreen(state.customerName);
-  } catch(e) { showToast('שגיאה בביטול'); }
+    const ref = window._doc(window._db,'appointments',id);
+    const snap = await window._getDoc(ref);
+    if (!snap.exists()) { showToast('התור לא נמצא'); return; }
+    const a = snap.data();
+    const dt = a.datetime.toDate();
+    const now = new Date();
+    const hoursUntil = (dt - now) / (1000 * 60 * 60);
+    const isLate = hoursUntil < 24;
+
+    window._pendingCancel = { id, appt: a, isLate, hoursUntil };
+
+    // Build modal content
+    const icon = document.getElementById('cancel-modal-icon');
+    const title = document.getElementById('cancel-modal-title');
+    const body = document.getElementById('cancel-modal-body');
+    const confirmBtn = document.getElementById('cancel-modal-confirm');
+
+    const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+    const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+
+    if (isLate) {
+      icon.className = 'modal-icon warn';
+      icon.textContent = '⚠️';
+      title.className = 'modal-title warn';
+      title.textContent = 'ביטול בפחות מ-24 שעות';
+      body.innerHTML = `
+        התור שלך הוא בעוד פחות מ-24 שעות (${dateStr} בשעה ${timeStr}).<br><br>
+        בהתאם למדיניות הביטולים שאישרת בעת קביעת התור,<br>
+        ביטול במועד זה כרוך ב<strong>דמי ביטול בסך 50% מעלות הטיפול</strong>.<br><br>
+        דמי הביטול ייגבו על-ידי מירית בתור הבא.
+      `;
+      confirmBtn.textContent = 'מבינה ומבטלת בכל זאת';
+    } else {
+      icon.className = 'modal-icon info';
+      icon.textContent = '💅';
+      title.className = 'modal-title';
+      title.textContent = 'לבטל את התור?';
+      body.innerHTML = `
+        ${dateStr} בשעה ${timeStr}<br>
+        <span style="color:var(--ink-mute)">${a.services}</span><br><br>
+        הביטול חינם — נשאר יותר מ-24 שעות לתור.
+      `;
+      confirmBtn.textContent = 'בטלי תור';
+    }
+
+    confirmBtn.onclick = () => confirmCancelAppt('customer');
+    document.getElementById('cancel-modal').classList.add('show');
+  } catch(e) {
+    console.error(e);
+    showToast('שגיאה בטעינת התור');
+  }
 };
+
+window.hideCancelModal = function() {
+  document.getElementById('cancel-modal').classList.remove('show');
+  window._pendingCancel = null;
+};
+
+async function confirmCancelAppt(cancelledBy) {
+  const pc = window._pendingCancel;
+  if (!pc) return;
+  const { id, appt, isLate } = pc;
+  const confirmBtn = document.getElementById('cancel-modal-confirm');
+  confirmBtn.style.opacity = '0.5';
+  confirmBtn.style.pointerEvents = 'none';
+  confirmBtn.textContent = 'מבטלת...';
+
+  try {
+    // 1) Update Firestore
+    await window._updateDoc(window._doc(window._db,'appointments',id), {
+      status: 'cancelled',
+      cancelledBy,
+      cancelledAt: window._Timestamp.now(),
+      lateCancellation: isLate
+    });
+
+    // 2) Send to Make cancellation webhook (deletes Calendar event + sends WhatsApp)
+    try {
+      const dt = appt.datetime.toDate();
+      const branch = appt.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+      const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      fetch(WEBHOOK_CANCEL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appointment_id: id,
+          event_id: appt.eventId || null,
+          name: appt.name,
+          phone: appt.phone,
+          branch,
+          services: appt.services,
+          duration: appt.duration,
+          date: dateStr,
+          time: timeStr,
+          datetime_iso: dt.toISOString(),
+          cancelled_by: cancelledBy,
+          late_cancellation: isLate
+        })
+      }).catch(() => {});
+    } catch(e) {}
+
+    hideCancelModal();
+    hideMiritCancelModal();
+    showToast(isLate ? 'התור בוטל. דמי ביטול ייגבו בתור הבא.' : 'התור בוטל ✓');
+
+    // Refresh whichever screen the user is on
+    if (cancelledBy === 'customer') {
+      loadWelcomeScreen(state.customerName);
+    } else {
+      loadMiritDashboard();
+      loadMiritAppts();
+    }
+  } catch(e) {
+    console.error(e);
+    confirmBtn.style.opacity = '1';
+    confirmBtn.style.pointerEvents = 'all';
+    confirmBtn.textContent = 'נסי שוב';
+    showToast('שגיאה בביטול');
+  }
+}
 
 // ===== BRANCH SELECTION =====
 window.selectBranch = function(branch) {
@@ -1505,6 +1824,8 @@ window.goToDetails = function() {
       <div class="summary-value">${state.totalDuration} דקות</div>
     </div>`;
   checkDetailsForm();
+  // Reset consent on each booking
+  document.getElementById('consent-check').classList.remove('checked');
   goTo('screen-details');
 };
 
@@ -1517,10 +1838,24 @@ window.toggleChip = function(el, val) {
 window.checkDetailsForm = function() {
   const name = document.getElementById('input-name').value.trim();
   const phone = document.getElementById('input-phone').value.trim();
+  const consent = document.getElementById('consent-check').classList.contains('checked');
   const btn = document.getElementById('details-submit-btn');
-  const ok = name.length >= 2 && phone.length >= 9;
+  const ok = name.length >= 2 && phone.length >= 9 && consent;
   btn.style.opacity = ok ? '1' : '0.4';
   btn.style.pointerEvents = ok ? 'all' : 'none';
+};
+
+window.toggleConsent = function() {
+  const c = document.getElementById('consent-check');
+  c.classList.toggle('checked');
+  checkDetailsForm();
+};
+
+window.showPolicyModal = function() {
+  document.getElementById('policy-modal').classList.add('show');
+};
+window.hidePolicyModal = function() {
+  document.getElementById('policy-modal').classList.remove('show');
 };
 
 // ===== SUBMIT BOOKING =====
@@ -1544,6 +1879,10 @@ window.submitBooking = async function() {
     chips,
     note,
     status: 'confirmed',
+    cancellationPolicyAccepted: true,
+    cancellationPolicyAcceptedAt: window._Timestamp.now(),
+    eventId: null,
+    reminderSent: false,
     createdAt: window._Timestamp.now()
   };
 
@@ -1552,12 +1891,12 @@ window.submitBooking = async function() {
     booking._id = docRef.id;
     state.lastBooking = { ...booking, dt };
 
-    // Send to Make → Google Calendar
+    // Send to Make → Google Calendar (Make writes eventId back to Firestore)
     try {
       const branch = state.branch === 'rehovot' ? 'רחובות - חיים קאופמן 8' : 'מודיעין - קייזר סנטר';
       const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
       const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-      fetch('https://hook.eu1.make.com/oi99znqb36jof3ctiydw7eray84cpo3s', {
+      fetch(WEBHOOK_BOOKING, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1593,7 +1932,7 @@ window.submitBooking = async function() {
       msg:   '\uD83D\uDCAC',
     };
     const waMsg = `${E.nail} הזמנה חדשה!\n\n${E.person} שם: ${name}\n${E.phone} טלפון: ${phone}\n${E.pin} סניף: ${branch}\n${E.cal} תאריך: ${dateStr}\n${E.clock} שעה: ${timeStr}\n${E.nail} טיפולים: ${state.services.join(' + ')}\n${E.timer} משך: ${state.totalDuration} דקות${booking.chips.length ? '\n'+E.note+' הערות: '+booking.chips.join(', ') : ''}${note ? '\n'+E.msg+' '+note : ''}`;
-    fetch('https://7107.api.greenapi.com/waInstance7107612855/sendMessage/89672fbea0b24b868d2073e7b552ddeaedb3a882bfd441caa6', {
+    fetch(GREEN_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chatId: '972504488463@c.us', message: waMsg })
@@ -1702,11 +2041,17 @@ async function loadMiritDashboard() {
   const today = new Date();
   today.setHours(0,0,0,0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+  const dayAfterTomorrow = new Date(today); dayAfterTomorrow.setDate(today.getDate()+2);
   const weekEnd = new Date(today); weekEnd.setDate(today.getDate()+7);
   const monthEnd = new Date(today.getFullYear(), today.getMonth()+1, 1);
 
   document.getElementById('today-date-label').textContent =
     today.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('tomorrow-date-label').textContent =
+    tomorrow.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  const weekStartLabel = today.toLocaleDateString('he-IL',{day:'numeric',month:'short'});
+  const weekEndLabel = new Date(today.getTime() + 6*86400000).toLocaleDateString('he-IL',{day:'numeric',month:'short'});
+  document.getElementById('week-range-label').textContent = `${weekStartLabel} — ${weekEndLabel}`;
 
   try {
     const q = window._query(
@@ -1719,55 +2064,50 @@ async function loadMiritDashboard() {
     const appts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
     const todayAppts = appts.filter(a => a.datetime.toDate() < tomorrow);
-    const weekAppts  = appts.filter(a => a.datetime.toDate() < weekEnd);
-    const monthAppts = appts.filter(a => a.datetime.toDate() < monthEnd);
     const tomorrowAppts = appts.filter(a => {
       const dt = a.datetime.toDate();
-      return dt >= tomorrow && dt < new Date(tomorrow.getTime()+86400000);
+      return dt >= tomorrow && dt < dayAfterTomorrow;
     });
+    const weekAppts  = appts.filter(a => a.datetime.toDate() < weekEnd);
+    const monthAppts = appts.filter(a => a.datetime.toDate() < monthEnd);
 
+    // Top stats
     document.getElementById('stat-today').textContent = todayAppts.length;
     document.getElementById('stat-week').textContent = weekAppts.length;
     document.getElementById('stat-month').textContent = monthAppts.length;
+
+    // Tab counts
+    document.getElementById('dash-tab-today-count').textContent = todayAppts.length;
+    document.getElementById('dash-tab-tomorrow-count').textContent = tomorrowAppts.length;
+    document.getElementById('dash-tab-week-count').textContent = weekAppts.length;
 
     // Reminder banner
     const banner = document.getElementById('reminder-banner');
     if (tomorrowAppts.length > 0) {
       banner.style.display = 'flex';
       document.getElementById('reminder-badge').textContent = tomorrowAppts.length;
-      document.getElementById('reminder-sub').textContent = `${tomorrowAppts.length} לקוחות מחר`;
+      const sentCount = tomorrowAppts.filter(a => a.reminderSent).length;
+      const subEl = document.getElementById('reminder-sub');
+      if (sentCount === tomorrowAppts.length) {
+        subEl.textContent = `✓ כל ${tomorrowAppts.length} התזכורות נשלחו`;
+      } else if (sentCount > 0) {
+        subEl.textContent = `${sentCount}/${tomorrowAppts.length} נשלחו · לחצי לפרטים`;
+      } else {
+        subEl.textContent = `${tomorrowAppts.length} לקוחות · ישלח אוטומטית ב-19:00`;
+      }
     } else {
       banner.style.display = 'none';
     }
 
     // Today's list
-    const list = document.getElementById('mirit-today-list');
-    if (todayAppts.length === 0) {
-      list.innerHTML = '<div class="empty-day">אין תורים היום ✨</div>';
-    } else {
-      list.innerHTML = todayAppts.map((a,i) => {
-        const dt = a.datetime.toDate();
-        const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-        return `<div class="appt-card${i===0?' next':''}">
-          <div class="appt-time">
-            <div class="h">${timeStr}</div>
-            <div class="d">${a.duration} דק'</div>
-          </div>
-          <div class="appt-info">
-            <div class="appt-client display">${a.name}</div>
-            <div class="appt-service">${a.services}${a.note ? ' <span style="color:var(--rose-gold-dark);font-style:italic">· '+a.note+'</span>' : ''}</div>
-          </div>
-          <div class="appt-actions">
-            <div class="icon-btn" onclick="openWA('${a.phone}','היי ${a.name}!')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
-            </div>
-            <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </div>
-          </div>
-        </div>`;
-      }).join('');
-    }
+    renderApptList('mirit-today-list', todayAppts, { highlightFirst: true });
+
+    // Tomorrow's list
+    renderApptList('mirit-tomorrow-list', tomorrowAppts, { compact: false, emptyMsg: 'אין תורים מחר ✨' });
+
+    // Week list (grouped by day)
+    renderWeekGrouped('mirit-week-list', weekAppts, today);
+
     window._tomorrowAppts = tomorrowAppts;
   } catch(e) {
     console.error(e);
@@ -1775,61 +2115,184 @@ async function loadMiritDashboard() {
   }
 }
 
-window.showReminders = function() {
-  const appts = window._tomorrowAppts || [];
-  if (!appts.length) return;
-  goTo('screen-reminders');
-  renderRemindersScreen(appts);
-};
-
-function buildReminderMsg(a) {
-  const dt = a.datetime.toDate();
-  const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-  const firstName = a.name.split(' ')[0];
-  const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
-  const wazeAddr = a.branch === 'rehovot'
-    ? 'https://waze.com/ul?q=חיים+קאופמן+8+רחובות&navigate=yes'
-    : 'https://waze.com/ul?q=קייזר+סנטר+מודיעין&navigate=yes';
-  return `ערב טוב ${firstName} 🌸 נפגשות מחר בשעה ${timeStr} ב${branch}. מחכה לך! 💅\n\n📍 ניווט לסניף: ${wazeAddr}\n\n— מירית`;
-}
-
-function renderRemindersScreen(appts) {
-  const list = document.getElementById('reminders-list');
-  const sent = window._remindersSent || new Set();
+// Renders a flat appointment list into a container
+function renderApptList(containerId, appts, opts = {}) {
+  const list = document.getElementById(containerId);
+  if (!list) return;
+  const { highlightFirst = false, compact = false, emptyMsg = 'אין תורים ✨' } = opts;
+  if (appts.length === 0) {
+    list.innerHTML = `<div class="empty-day">${emptyMsg}</div>`;
+    return;
+  }
   list.innerHTML = appts.map((a, i) => {
-    const isSent = sent.has(a.id);
-    return `<div class="appt-card" style="margin-bottom:10px" id="reminder-card-${i}">
-      <div class="appt-info" style="flex:1">
-        <div class="appt-client display">${a.name}</div>
-        <div class="appt-service">${a.services} · ${a.branch === 'rehovot' ? 'רחובות' : 'מודיעין'}</div>
-        <div class="appt-service" style="font-size:11px;color:var(--ink-mute)">${a.datetime.toDate().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</div>
+    const dt = a.datetime.toDate();
+    const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+    const cls = `appt-card${highlightFirst && i===0 ? ' next' : ''}${compact ? ' compact' : ''}`;
+    return `<div class="${cls}">
+      <div class="appt-time">
+        <div class="h">${timeStr}</div>
+        <div class="d">${a.duration} דק'</div>
       </div>
-      <button onclick="sendSingleReminder(${i})" id="remind-btn-${i}"
-        style="flex-shrink:0;padding:10px 14px;border-radius:14px;border:none;cursor:pointer;font-family:'Heebo',sans-serif;font-size:13px;font-weight:500;
-        background:${isSent ? 'rgba(122,155,110,0.15)' : 'linear-gradient(135deg,#25D366,#128C7E)'};
-        color:${isSent ? '#5a7a52' : 'white'};">
-        ${isSent ? '✓ נשלח' : '📲 שלחי'}
-      </button>
+      <div class="appt-info">
+        <div class="appt-client display">${a.name}</div>
+        <div class="appt-service">${a.services}${a.note ? ' <span style="color:var(--rose-gold-dark);font-style:italic">· '+a.note+'</span>' : ''}</div>
+      </div>
+      <div class="appt-actions">
+        <div class="icon-btn" onclick="openWA('${a.phone}','היי ${a.name}!')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
+        </div>
+        <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+      </div>
     </div>`;
   }).join('');
-  document.getElementById('reminders-count').textContent = `${appts.length} לקוחות מחר`;
 }
 
-window._remindersSent = new Set();
-window.sendSingleReminder = function(idx) {
-  const appts = window._tomorrowAppts || [];
-  const a = appts[idx];
-  if (!a) return;
-  const msg = buildReminderMsg(a);
-  openWA(a.phone, msg);
-  window._remindersSent.add(a.id);
-  const btn = document.getElementById(`remind-btn-${idx}`);
-  if (btn) {
-    btn.style.background = 'rgba(122,155,110,0.15)';
-    btn.style.color = '#5a7a52';
-    btn.textContent = '✓ נשלח';
+// Renders week appointments grouped by day
+function renderWeekGrouped(containerId, appts, startDate) {
+  const list = document.getElementById(containerId);
+  if (!list) return;
+  if (appts.length === 0) {
+    list.innerHTML = '<div class="empty-day">אין תורים השבוע ✨</div>';
+    return;
   }
+  // Group by yyyy-mm-dd
+  const groups = {};
+  appts.forEach(a => {
+    const dt = a.datetime.toDate();
+    const key = dt.toISOString().slice(0,10);
+    if (!groups[key]) groups[key] = { date: new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()), items: [] };
+    groups[key].items.push(a);
+  });
+  const sortedKeys = Object.keys(groups).sort();
+  list.innerHTML = sortedKeys.map(key => {
+    const g = groups[key];
+    const dt = g.date;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+    let dayName = HEBREW_DAYS_SHORT[dt.getDay()];
+    if (dt.getTime() === today.getTime()) dayName = 'היום';
+    else if (dt.getTime() === tomorrow.getTime()) dayName = 'מחר';
+    else dayName = `יום ${dayName}`;
+    const dateStr = dt.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
+    return `<div class="week-day-group">
+      <div class="week-day-header">
+        <div class="week-day-name">${dayName}</div>
+        <div class="week-day-date">${dateStr}</div>
+        <div class="week-day-line"></div>
+        <div class="week-day-count">${g.items.length}</div>
+      </div>
+      <div class="appt-list">
+        ${g.items.map(a => {
+          const adt = a.datetime.toDate();
+          const timeStr = adt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+          return `<div class="appt-card compact">
+            <div class="appt-time">
+              <div class="h">${timeStr}</div>
+              <div class="d">${a.duration} דק'</div>
+            </div>
+            <div class="appt-info">
+              <div class="appt-client display">${a.name}</div>
+              <div class="appt-service">${a.services} · ${a.branch === 'rehovot' ? 'רחובות' : 'מודיעין'}</div>
+            </div>
+            <div class="appt-actions">
+              <div class="icon-btn" onclick="openWA('${a.phone}','היי ${a.name}!')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
+              </div>
+              <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.switchDashTab = function(tab) {
+  ['today','tomorrow','week'].forEach(t => {
+    const tabEl = document.getElementById(`dash-tab-${t}`);
+    const sectionEl = document.getElementById(`dash-${t}-section`);
+    if (t === tab) {
+      tabEl.classList.add('active');
+      sectionEl.style.display = 'block';
+    } else {
+      tabEl.classList.remove('active');
+      sectionEl.style.display = 'none';
+    }
+  });
 };
+
+window.showReminders = function() {
+  goTo('screen-reminders');
+  loadRemindersLog();
+};
+
+async function loadRemindersLog() {
+  const list = document.getElementById('reminders-list');
+  const countEl = document.getElementById('reminders-count');
+  list.innerHTML = '<div class="empty-day">טוענת...</div>';
+
+  try {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+    const dayAfterTomorrow = new Date(today); dayAfterTomorrow.setDate(today.getDate()+2);
+
+    const q = window._query(
+      window._col(window._db,'appointments'),
+      window._where('datetime','>=',window._Timestamp.fromDate(tomorrow)),
+      window._where('datetime','<', window._Timestamp.fromDate(dayAfterTomorrow)),
+      window._where('status','in',['pending','confirmed']),
+      window._orderBy('datetime','asc')
+    );
+    const snap = await window._getDocs(q);
+    const appts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+    if (appts.length === 0) {
+      countEl.textContent = 'אין תורים מחר — לא יישלחו תזכורות';
+      list.innerHTML = '<div class="empty-day">אין תורים מחר ✨</div>';
+      return;
+    }
+
+    const sentCount = appts.filter(a => a.reminderSent).length;
+    if (sentCount === appts.length) {
+      countEl.textContent = `כל ${appts.length} התזכורות נשלחו ✓`;
+    } else if (sentCount > 0) {
+      countEl.textContent = `${sentCount} מתוך ${appts.length} תזכורות נשלחו`;
+    } else {
+      countEl.textContent = `${appts.length} תזכורות מתוזמנות להישלח היום ב-19:00`;
+    }
+
+    list.innerHTML = appts.map(a => {
+      const dt = a.datetime.toDate();
+      const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+      let statusBadge;
+      if (a.reminderSent && a.reminderSentAt) {
+        const sentAt = a.reminderSentAt.toDate ? a.reminderSentAt.toDate() : new Date(a.reminderSentAt);
+        const sentTime = sentAt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+        statusBadge = `<div style="flex-shrink:0;padding:8px 12px;border-radius:12px;background:rgba(122,155,110,0.15);color:#5a7a52;font-size:12px;font-weight:500">✓ ${sentTime}</div>`;
+      } else if (a.reminderSent) {
+        statusBadge = `<div style="flex-shrink:0;padding:8px 12px;border-radius:12px;background:rgba(122,155,110,0.15);color:#5a7a52;font-size:12px;font-weight:500">✓ נשלח</div>`;
+      } else {
+        statusBadge = `<div style="flex-shrink:0;padding:8px 12px;border-radius:12px;background:rgba(201,164,122,0.12);color:var(--rose-gold-dark);font-size:12px;font-weight:500">⏰ ממתין</div>`;
+      }
+      return `<div class="appt-card compact" style="margin-bottom:10px">
+        <div class="appt-info" style="flex:1">
+          <div class="appt-client display">${a.name}</div>
+          <div class="appt-service">${a.services} · ${branch}</div>
+          <div class="appt-service" style="font-size:11px;color:var(--ink-mute)">${timeStr} · ${a.phone}</div>
+        </div>
+        ${statusBadge}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    console.error(e);
+    list.innerHTML = '<div class="empty-day">שגיאה בטעינה</div>';
+  }
+}
 
 // ===== MIRIT APPOINTMENTS LIST =====
 window.miritApptFilter = { branch: 'all', dateFrom: '', dateTo: '' };
@@ -1897,13 +2360,41 @@ async function loadMiritAppts() {
 }
 
 window.miritCancelAppt = async function(id) {
-  if (!confirm('לבטל את התור?')) return;
   try {
-    await window._updateDoc(window._doc(window._db,'appointments',id), {status:'cancelled'});
-    showToast('התור בוטל ✓');
-    loadMiritDashboard();
-    loadMiritAppts();
-  } catch(e) { showToast('שגיאה בביטול'); }
+    const ref = window._doc(window._db,'appointments',id);
+    const snap = await window._getDoc(ref);
+    if (!snap.exists()) { showToast('התור לא נמצא'); return; }
+    const a = snap.data();
+    const dt = a.datetime.toDate();
+
+    window._pendingCancel = { id, appt: a, isLate: false, hoursUntil: 999 };
+
+    const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+    const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+    const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+
+    document.getElementById('mirit-cancel-body').innerHTML = `
+      <strong>${a.name}</strong><br>
+      <span style="color:var(--ink-mute)">${a.phone}</span><br><br>
+      ${dateStr} בשעה ${timeStr}<br>
+      <span style="color:var(--ink-mute)">${a.services} · ${branch}</span><br><br>
+      הלקוחה תקבל הודעת WhatsApp על הביטול.
+    `;
+    const confirmBtn = document.getElementById('mirit-cancel-confirm');
+    confirmBtn.textContent = 'בטלי תור';
+    confirmBtn.style.opacity = '1';
+    confirmBtn.style.pointerEvents = 'all';
+    confirmBtn.onclick = () => confirmCancelAppt('mirit');
+    document.getElementById('mirit-cancel-modal').classList.add('show');
+  } catch(e) {
+    console.error(e);
+    showToast('שגיאה בטעינת התור');
+  }
+};
+
+window.hideMiritCancelModal = function() {
+  document.getElementById('mirit-cancel-modal').classList.remove('show');
+  window._pendingCancel = null;
 };
 
 window.applyApptFilter = function() {
