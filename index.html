@@ -1463,8 +1463,7 @@ function normalizePhoneForStorage(raw) {
 const WEBHOOK_BOOKING = 'https://hook.eu1.make.com/oi99znqb36jof3ctiydw7eray84cpo3s';
 const WEBHOOK_CANCEL  = 'https://hook.eu1.make.com/oc3iulppmf7vmfrtgm6otrpgc5pubxn5';
 
-// Green API (used for client-side fallback messaging)
-const GREEN_API_URL = 'https://7107.api.greenapi.com/waInstance7107612855/sendMessage/89672fbea0b24b868d2073e7b552ddeaedb3a882bfd441caa6';
+// WhatsApp via Make webhook (Wappi) — no direct client-side messaging
 
 const HEBREW_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 const HEBREW_DAYS_SHORT = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
@@ -2054,21 +2053,7 @@ window.submitManualBooking = async function() {
       }).catch(() => {});
     } catch(e) {}
 
-    // Send WhatsApp confirmation TO THE CUSTOMER via Green API
-    try {
-      const branchFull = ms.branch === 'rehovot' ? 'רחובות - חיים קאופמן 8' : 'מודיעין - קייזר סנטר';
-      const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-      const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-      const firstName = name.split(' ')[0];
-      // Normalize phone to international format: 0501234567 → 972501234567
-      const normalizedPhone = phone.replace(/[^\d]/g,'').replace(/^0/,'972');
-      const customerMsg = `שלום ${firstName} 🌸\n\nמירית קבעה לך תור:\n\n📅 ${dateStr}\n⏰ שעה: ${timeStr}\n💎 טיפול: ${ms.services.join(' + ')}\n📍 ${branchFull}\n\n⚠️ מדיניות ביטולים: ביטול עד 24 שעות לפני התור — חינם.\nביטול בפחות מ-24 שעות — 50% מעלות הטיפול.\n\nמצפה לראותך! ✨\n\n${MIRIT_SIGNATURE}`;
-      fetch(GREEN_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId: `${normalizedPhone}@c.us`, message: customerMsg })
-      }).catch(() => {});
-    } catch(e) {}
+    // WhatsApp to customer handled by Make (Wappi) if needed
 
     showToast('התור נקבע ונשלחה הודעה ללקוחה ✓');
     submitBtn.textContent = 'קבעי תור';
@@ -2413,27 +2398,7 @@ window.submitBooking = async function() {
     // Save customer data
     localStorage.setItem('customerData', JSON.stringify({ name, phone }));
 
-    // Send WhatsApp to Mirit via Green API
-    const branch = state.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
-    const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-    const E = {
-      nail:  '\uD83D\uDC85',
-      person:'\uD83D\uDC64',
-      phone: '\uD83D\uDCDE',
-      pin:   '\uD83D\uDCCD',
-      cal:   '\uD83D\uDCC5',
-      clock: '\u23F0',
-      timer: '\u23F1',
-      note:  '\uD83D\uDCDD',
-      msg:   '\uD83D\uDCAC',
-    };
-    const waMsg = `${E.nail} הזמנה חדשה!\n\n${E.person} שם: ${name}\n${E.phone} טלפון: ${phone}\n${E.pin} סניף: ${branch}\n${E.cal} תאריך: ${dateStr}\n${E.clock} שעה: ${timeStr}\n${E.nail} טיפולים: ${state.services.join(' + ')}\n${E.timer} משך: ${state.totalDuration} דקות${booking.chips.length ? '\n'+E.note+' הערות: '+booking.chips.join(', ') : ''}${note ? '\n'+E.msg+' '+note : ''}`;
-    fetch(GREEN_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chatId: '972504488463@c.us', message: waMsg })
-    }).catch(() => {});
+    // WhatsApp to Mirit is handled by Make (Wappi) via WEBHOOK_BOOKING above
 
     // Show success screen
     const dateStrShort = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
