@@ -2832,10 +2832,10 @@ window.sendAllReminders = async function() {
       const phoneToSend = normalizePhoneForStorage(a.phone || a.phoneRaw);
       const msg = `שלום ${firstName} 🌸\n\nתזכורת חמודה לתור שלך מחר:\n\n📅 ${dateStr}\n⏰ שעה: ${timeStr}\n💎 טיפול: ${a.services}\n📍 ${branchFull}\n\n⚠️ מדיניות ביטולים: ביטול עד 24 שעות לפני התור — חינם.\nביטול בפחות מ-24 שעות — 50% מעלות הטיפול.\n\nמצפה לראותך! ✨\n\n${MIRIT_SIGNATURE}`;
 
-      const res = await fetch(GREEN_API_URL, {
+      const res = await fetch('https://wappi.pro/api/sync/message/send?profile_id=e4a694b6-eea0', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId: `${phoneToSend}@c.us`, message: msg })
+        headers: { 'Content-Type': 'application/json', 'Authorization': '4172a77c1c623d8a9415c2a47f8fc5ecfde30549' },
+        body: JSON.stringify({ recipient: phoneToSend, body: msg })
       });
       if (res.ok) {
         sent++;
