@@ -2398,8 +2398,9 @@ window.submitBooking = async function() {
     // Save customer data
     localStorage.setItem('customerData', JSON.stringify({ name, phone }));
 
-    // WhatsApp to Mirit is handled by Make (Wappi) via WEBHOOK_BOOKING above
-
+// WhatsApp to Mirit is handled by Make (Wappi) via WEBHOOK_BOOKING above
+    const branch = state.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+    const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
     // Show success screen
     const dateStrShort = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
     document.getElementById('success-summary').innerHTML = `
