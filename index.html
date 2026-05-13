@@ -258,6 +258,44 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   background:var(--white);border:1px solid var(--line);border-radius:18px;
   padding:18px;margin-bottom:12px;display:flex;gap:14px;
   align-items:flex-start;box-shadow:var(--shadow-soft);
+
+/* ===== SCREEN: GALLERY ===== */
+.gallery-header{
+  text-align:center;padding:28px 24px 16px;
+}
+.gallery-header .display{font-size:30px;color:var(--ink);line-height:1.2}
+.gallery-header .sub{font-size:13px;color:var(--ink-mute);margin-top:6px;letter-spacing:0.04em}
+.mosaic{padding:12px 16px 100px;display:flex;flex-direction:column;gap:8px}
+.mosaic-row-big{display:grid;grid-template-columns:2fr 1fr;gap:8px;height:200px}
+.mosaic-row-small{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;height:130px}
+.mosaic-row-med{display:grid;grid-template-columns:1fr 2fr;gap:8px;height:170px}
+.mosaic-cell{
+  border-radius:16px;overflow:hidden;cursor:pointer;
+  position:relative;transition:transform 0.2s ease;
+}
+.mosaic-cell:active{transform:scale(0.97)}
+.mosaic-cell img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-lightbox{
+  position:fixed;inset:0;background:rgba(30,18,10,0.93);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:9000;opacity:0;pointer-events:none;transition:opacity 0.25s;
+  padding:20px;
+}
+.gallery-lightbox.show{opacity:1;pointer-events:all}
+.gallery-lightbox img{
+  max-width:100%;max-height:75vh;border-radius:16px;
+  object-fit:contain;
+}
+.gallery-lb-close{
+  position:absolute;top:20px;left:20px;
+  background:rgba(255,255,255,0.15);border:none;color:white;
+  width:36px;height:36px;border-radius:50%;font-size:18px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.gallery-lb-counter{
+  color:rgba(255,255,255,0.5);font-size:12px;letter-spacing:2px;
+  margin-top:16px;font-family:'Heebo',sans-serif;
+}
 }
 .step-num{
   width:32px;height:32px;border-radius:50%;
@@ -655,45 +693,31 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 <!-- ============================================================ -->
 <!-- SCREEN 1: INSTALL INSTRUCTIONS (first visit)                -->
 <!-- ============================================================ -->
-<div id="screen-install" class="screen">
-  <div class="statusbar"><span id="time-install" class="statusbar-time">9:41</span></div>
-  <div class="install-hero">
-    <div class="install-illustration">M</div>
-    <div class="brand-name display" style="font-size:28px">ברוכה הבאה</div>
-    <div class="brand-ornament">✦ ✦ ✦</div>
-    <p style="font-size:14px;color:var(--ink-soft);line-height:1.6;max-width:280px;margin:0 auto">
-      כדי לפתוח את האפליקציה בקלות בכל פעם<br>הוסיפי אותה למסך הבית בשלושה צעדים פשוטים
-    </p>
+<div id="screen-gallery" class="screen">
+  <div class="statusbar"><span id="time-gallery" class="statusbar-time">9:41</span></div>
+  <div class="gallery-header">
+    <div class="display" style="font-size:28px;color:var(--ink)">הציצי לעבודות שלי ✨</div>
+    <div style="font-size:13px;color:var(--ink-mute);margin-top:6px;letter-spacing:0.04em">לחצי על תמונה להגדלה</div>
   </div>
-  <div style="padding:20px 24px 10px">
-    <div class="install-step">
-      <div class="step-num">1</div>
-      <div>
-        <div class="step-title">לחצי על כפתור השיתוף</div>
-        <div class="step-desc">הריבוע עם החץ למעלה בתחתית הדפדפן Safari</div>
-      </div>
+  <div class="mosaic">
+    <div class="mosaic-row-big">
+      <div class="mosaic-cell" onclick="openGalleryLb(0)"><img src="gallery/img1.jpg" alt="עיצוב ציפורניים"></div>
+      <div class="mosaic-cell" onclick="openGalleryLb(1)"><img src="gallery/img2.jpg" alt="עיצוב ציפורניים"></div>
     </div>
-    <div class="install-step">
-      <div class="step-num">2</div>
-      <div>
-        <div class="step-title">בחרי "הוסף למסך הבית"</div>
-        <div class="step-desc">גללי את התפריט קצת למטה אם לא רואה את האפשרות</div>
-      </div>
+    <div class="mosaic-row-small">
+      <div class="mosaic-cell" onclick="openGalleryLb(2)"><img src="gallery/img3.jpg" alt="עיצוב ציפורניים"></div>
+      <div class="mosaic-cell" onclick="openGalleryLb(3)"><img src="gallery/img4.jpg" alt="עיצוב ציפורניים"></div>
+      <div class="mosaic-cell" onclick="openGalleryLb(4)"><img src="gallery/img5.jpg" alt="עיצוב ציפורניים"></div>
     </div>
-    <div class="install-step">
-      <div class="step-num">3</div>
-      <div>
-        <div class="step-title">לחצי "הוסף"</div>
-        <div class="step-desc">האפליקציה תופיע במסך הבית, בדיוק כמו אפליקציה רגילה ✨</div>
-      </div>
+    <div class="mosaic-row-med">
+      <div class="mosaic-cell" onclick="openGalleryLb(5)"><img src="gallery/img6.jpg" alt="עיצוב ציפורניים"></div>
+      <div class="mosaic-cell" onclick="openGalleryLb(6)"><img src="gallery/img7.jpg" alt="עיצוב ציפורניים"></div>
     </div>
   </div>
-  <div style="padding:10px 24px 40px;display:flex;flex-direction:column;gap:10px">
-    <button class="btn btn-primary" onclick="doneInstall()">
-      הבנתי, המשך לאפליקציה
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(180deg)"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
-    <button class="btn btn-ghost" style="padding:14px;font-size:13px" onclick="doneInstall()">אעשה זאת מאוחר יותר</button>
+  <div class="gallery-lightbox" id="gallery-lb" onclick="closeGalleryLb()">
+    <button class="gallery-lb-close" onclick="closeGalleryLb()">✕</button>
+    <img id="gallery-lb-img" src="" alt="תמונה מוגדלת">
+    <div class="gallery-lb-counter" id="gallery-lb-counter">1 / 7</div>
   </div>
 </div>
 
@@ -733,12 +757,12 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
       <div class="quick-title">WhatsApp</div>
       <div class="quick-sub">שלחי הודעה למירית</div>
     </div>
-    <div class="quick-card" onclick="goTo('screen-install')">
+    <div class="quick-card" onclick="goTo('screen-gallery')">
       <div class="quick-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       </div>
-      <div class="quick-title">הוראות התקנה</div>
-      <div class="quick-sub">הוסיפי למסך הבית</div>
+      <div class="quick-title">תיק עבודות</div>
+      <div class="quick-sub">הציצי לעבודות שלי</div>
     </div>
   </div>
   <div style="padding:0 24px 100px">
@@ -1296,7 +1320,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   </div>
   <div style="padding:0 24px 120px" id="reminders-list"></div>
   <!-- Sticky bottom button -->
-  <div id="reminders-send-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(253,246,240,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--line);padding:14px 24px max(20px,env(safe-area-inset-bottom));z-index:101">
+  <div id="reminders-send-bar" style="display:none;position:fixed;bottom:84px;left:0;right:0;background:rgba(253,246,240,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--line);padding:14px 24px max(20px,env(safe-area-inset-bottom));z-index:101">
     <button class="btn btn-primary" id="reminders-send-btn" onclick="sendAllReminders()" style="width:100%">שלחי תזכורות</button>
   </div>
 </div>
@@ -1533,12 +1557,21 @@ function openWA(phone, msg) {
 }
 window.openWA = openWA;
 
-// ===== INSTALL =====
-function doneInstall() {
-  localStorage.setItem('installSeen', '1');
-  initCustomerFlow();
+// ===== GALLERY =====
+const galleryImages = [
+  'gallery/img1.jpg','gallery/img2.jpg','gallery/img3.jpg',
+  'gallery/img4.jpg','gallery/img5.jpg','gallery/img6.jpg','gallery/img7.jpg'
+];
+function openGalleryLb(i) {
+  document.getElementById('gallery-lb-img').src = galleryImages[i];
+  document.getElementById('gallery-lb-counter').textContent = (i+1) + ' / ' + galleryImages.length;
+  document.getElementById('gallery-lb').classList.add('show');
 }
-window.doneInstall = doneInstall;
+function closeGalleryLb() {
+  document.getElementById('gallery-lb').classList.remove('show');
+}
+window.openGalleryLb = openGalleryLb;
+window.closeGalleryLb = closeGalleryLb;
 
 // ===== CUSTOMER INIT =====
 function initCustomerFlow() {
@@ -3240,13 +3273,6 @@ function startApp() {
   // Check if Mirit is logged in
   if (localStorage.getItem('miritAdmin') === '1') {
     enterMiritMode();
-    return;
-  }
-
-  // Check install screen
-  const installSeen = localStorage.getItem('installSeen');
-  if (!installSeen && /iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone) {
-    goTo('screen-install');
     return;
   }
 
