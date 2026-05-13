@@ -260,23 +260,32 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   align-items:flex-start;box-shadow:var(--shadow-soft);
 
 /* ===== SCREEN: GALLERY ===== */
-.gallery-header{
-  text-align:center;padding:28px 24px 16px;
+.gallery-header{text-align:center;padding:24px 24px 16px}
+.gallery-hero{
+  padding:0 16px;
 }
-.gallery-header .display{font-size:30px;color:var(--ink);line-height:1.2}
-.gallery-header .sub{font-size:13px;color:var(--ink-mute);margin-top:6px;letter-spacing:0.04em}
-.mosaic{padding:12px 16px 100px;display:flex;flex-direction:column;gap:8px}
-.mosaic-row-big{display:grid;grid-template-columns:2fr 1fr;gap:8px}
-.mosaic-row-small{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-.mosaic-row-med{display:grid;grid-template-columns:1fr 2fr;gap:8px}
-.mosaic-cell{border-radius:16px;overflow:hidden;cursor:pointer;transition:transform 0.2s ease}
-.mosaic-row-big .mosaic-cell{aspect-ratio:3/4}
-.mosaic-row-big .mosaic-cell:first-child{aspect-ratio:4/5}
-.mosaic-row-small .mosaic-cell{aspect-ratio:1/1}
-.mosaic-row-med .mosaic-cell{aspect-ratio:3/4}
-.mosaic-row-med .mosaic-cell:last-child{aspect-ratio:4/3}
-.mosaic-cell:active{transform:scale(0.97)}
-.mosaic-cell img{width:100%;height:100%;object-fit:cover;object-position:center center;display:block}
+.gallery-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  grid-template-rows:auto auto auto;
+  gap:6px;
+  padding:0 16px 100px;
+}
+.g-cell{
+  border-radius:12px;overflow:hidden;cursor:pointer;
+  transition:transform 0.18s ease;
+}
+.g-cell:active{transform:scale(0.97)}
+.g-cell img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+.g-cell{aspect-ratio:1/1}
+.g-center{
+  grid-column:2;
+  grid-row:1/4;
+  border-radius:14px;overflow:hidden;cursor:pointer;
+  transition:transform 0.18s ease;
+}
+.g-center:active{transform:scale(0.97)}
+.g-center img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
 .gallery-lightbox{
   position:fixed;inset:0;background:rgba(30,18,10,0.93);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -701,20 +710,14 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
     <div class="display" style="font-size:28px;color:var(--ink)">הציצי לעבודות שלי ✨</div>
     <div style="font-size:13px;color:var(--ink-mute);margin-top:6px;letter-spacing:0.04em">לחצי על תמונה להגדלה</div>
   </div>
-  <div class="mosaic">
-    <div class="mosaic-row-big">
-      <div class="mosaic-cell" onclick="openGalleryLb(0)"><img src="gallery/img1.jpg" alt="עיצוב ציפורניים"></div>
-      <div class="mosaic-cell" onclick="openGalleryLb(1)"><img src="gallery/img2.jpg" alt="עיצוב ציפורניים"></div>
-    </div>
-    <div class="mosaic-row-small">
-      <div class="mosaic-cell" onclick="openGalleryLb(2)"><img src="gallery/img3.jpg" alt="עיצוב ציפורניים"></div>
-      <div class="mosaic-cell" onclick="openGalleryLb(3)"><img src="gallery/img4.jpg" alt="עיצוב ציפורניים"></div>
-      <div class="mosaic-cell" onclick="openGalleryLb(4)"><img src="gallery/img5.jpg" alt="עיצוב ציפורניים"></div>
-    </div>
-    <div class="mosaic-row-med">
-      <div class="mosaic-cell" onclick="openGalleryLb(5)"><img src="gallery/img6.jpg" alt="עיצוב ציפורניים"></div>
-      <div class="mosaic-cell" onclick="openGalleryLb(6)"><img src="gallery/img7.jpg" alt="עיצוב ציפורניים"></div>
-    </div>
+  <div class="gallery-grid">
+    <div class="g-cell" onclick="openGalleryLb(0)"><img src="gallery/img1.jpg" alt="עיצוב ציפורניים"></div>
+    <div class="g-center" onclick="openGalleryLb(1)"><img src="gallery/img2.jpg" alt="עיצוב ציפורניים"></div>
+    <div class="g-cell" onclick="openGalleryLb(2)"><img src="gallery/img3.jpg" alt="עיצוב ציפורניים"></div>
+    <div class="g-cell" onclick="openGalleryLb(3)"><img src="gallery/img4.jpg" alt="עיצוב ציפורניים"></div>
+    <div class="g-cell" onclick="openGalleryLb(4)"><img src="gallery/img5.jpg" alt="עיצוב ציפורניים"></div>
+    <div class="g-cell" onclick="openGalleryLb(5)"><img src="gallery/img6.jpg" alt="עיצוב ציפורניים"></div>
+    <div class="g-cell" onclick="openGalleryLb(6)"><img src="gallery/img7.jpg" alt="עיצוב ציפורניים"></div>
   </div>
   <div class="gallery-lightbox" id="gallery-lb" onclick="closeGalleryLb()">
     <button class="gallery-lb-close" onclick="closeGalleryLb()">✕</button>
