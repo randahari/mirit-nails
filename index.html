@@ -706,12 +706,11 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 <!-- ============================================================ -->
 <div id="screen-gallery" class="screen">
   <div class="statusbar"><span id="time-gallery" class="statusbar-time">9:41</span></div>
-  <div class="top-bar">
-    <button class="back-btn" onclick="goTo('screen-home')">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <div class="top-bar-title">העבודות שלי</div>
-    <div style="width:36px"></div>
+  <div class="back-bar" onclick="goTo('screen-welcome')">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+    חזרה
   </div>
   <div class="gallery-grid">
     <div class="g-cell" onclick="openGalleryLb(0)"><img src="gallery/img2.jpg" alt="עיצוב ציפורניים" style="object-position:center top"></div>
@@ -722,7 +721,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
     <div class="g-cell" onclick="openGalleryLb(5)"><img src="gallery/img5.jpg" alt="עיצוב ציפורניים" style="object-position:right 55%"></div>
     <div class="g-cell" onclick="openGalleryLb(6)"><img src="gallery/img3.jpg" alt="עיצוב ציפורניים" style="object-position:center 50%"></div>
   </div>
-  <div style="padding:16px 16px 100px;text-align:center">
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding-bottom:80px;">
     <button class="btn btn-primary" onclick="goTo('screen-booking')" style="width:100%;max-width:340px">הזמיני תור עכשיו ✨</button>
   </div>
 </div>
