@@ -258,6 +258,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   background:var(--white);border:1px solid var(--line);border-radius:18px;
   padding:18px;margin-bottom:12px;display:flex;gap:14px;
   align-items:flex-start;box-shadow:var(--shadow-soft);
+}
 
 /* ===== SCREEN: GALLERY ===== */
 .gallery-header{text-align:center;padding:24px 24px 16px}
@@ -267,7 +268,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 .gallery-grid{
   display:grid;
   grid-template-columns:1fr 2fr 1fr;
-  grid-template-rows:repeat(3,80px);
+  grid-template-rows:repeat(3,155px);
   gap:6px;
   padding:0 16px 100px;
 }
@@ -710,18 +711,13 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
     <div style="font-size:13px;color:var(--ink-mute);margin-top:6px;letter-spacing:0.04em">לחצי על תמונה להגדלה</div>
   </div>
   <div class="gallery-grid">
-    <div class="g-cell" onclick="openGalleryLb(0)"><img src="gallery/img1.jpg" alt="עיצוב ציפורניים"></div>
-    <div class="g-cell" onclick="openGalleryLb(2)"><img src="gallery/img3.jpg" alt="עיצוב ציפורניים"></div>
-    <div class="g-center" onclick="openGalleryLb(1)"><img src="gallery/img2.jpg" alt="עיצוב ציפורניים"></div>
-    <div class="g-cell" onclick="openGalleryLb(3)"><img src="gallery/img4.jpg" alt="עיצוב ציפורניים"></div>
-    <div class="g-cell" onclick="openGalleryLb(4)"><img src="gallery/img5.jpg" alt="עיצוב ציפורניים"></div>
-    <div class="g-cell" onclick="openGalleryLb(5)"><img src="gallery/img6.jpg" alt="עיצוב ציפורניים"></div>
-    <div class="g-cell" onclick="openGalleryLb(6)"><img src="gallery/img7.jpg" alt="עיצוב ציפורניים"></div>
-  </div>
-  <div class="gallery-lightbox" id="gallery-lb" onclick="closeGalleryLb()">
-    <button class="gallery-lb-close" onclick="closeGalleryLb()">✕</button>
-    <img id="gallery-lb-img" src="" alt="תמונה מוגדלת">
-    <div class="gallery-lb-counter" id="gallery-lb-counter">1 / 7</div>
+    <div class="g-cell" onclick="openGalleryLb(0)"><img src="gallery/img2.jpg" alt="עיצוב ציפורניים" style="object-position:center top"></div>
+    <div class="g-cell" onclick="openGalleryLb(1)"><img src="gallery/img6.jpg" alt="עיצוב ציפורניים" style="object-position:center 25%"></div>
+    <div class="g-center" onclick="openGalleryLb(2)"><img src="gallery/img7.jpg" alt="עיצוב ציפורניים" style="object-position:center 20%"></div>
+    <div class="g-cell" onclick="openGalleryLb(3)"><img src="gallery/img1.jpg" alt="עיצוב ציפורניים" style="object-position:center 12%"></div>
+    <div class="g-cell" onclick="openGalleryLb(4)"><img src="gallery/img4.jpg" alt="עיצוב ציפורניים" style="object-position:center 20%"></div>
+    <div class="g-cell" onclick="openGalleryLb(5)"><img src="gallery/img5.jpg" alt="עיצוב ציפורניים" style="object-position:right 55%"></div>
+    <div class="g-cell" onclick="openGalleryLb(6)"><img src="gallery/img3.jpg" alt="עיצוב ציפורניים" style="object-position:center 50%"></div>
   </div>
 </div>
 
@@ -1563,8 +1559,13 @@ window.openWA = openWA;
 
 // ===== GALLERY =====
 const galleryImages = [
-  'gallery/img1.jpg','gallery/img2.jpg','gallery/img3.jpg',
-  'gallery/img4.jpg','gallery/img5.jpg','gallery/img6.jpg','gallery/img7.jpg'
+  'gallery/img2.jpg',
+  'gallery/img6.jpg',
+  'gallery/img7.jpg',
+  'gallery/img1.jpg',
+  'gallery/img4.jpg',
+  'gallery/img5.jpg',
+  'gallery/img3.jpg'
 ];
 function openGalleryLb(i) {
   document.getElementById('gallery-lb-img').src = galleryImages[i];
@@ -3326,5 +3327,10 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+<div class="gallery-lightbox" id="gallery-lb" onclick="closeGalleryLb()">
+  <button class="gallery-lb-close" onclick="closeGalleryLb()">✕</button>
+  <img id="gallery-lb-img" src="" alt="תמונה מוגדלת">
+  <div class="gallery-lb-counter" id="gallery-lb-counter">1 / 7</div>
+</div>
 </body>
 </html>
