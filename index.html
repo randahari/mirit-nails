@@ -2266,28 +2266,19 @@ async function loadTimeSlots(date) {
   } catch(e) { console.log('slots error',e); }
 
   // Generate slots: startH to endH, only full hours
-  const startH = 9;
-  const endH   = state.branch === 'modiin' ? 16 : 18;
   const slots = [];
-  const step = state.totalDuration;
-  for (let totalMin = startH * 60; totalMin < endH * 60; totalMin += step) {
-    const h = Math.floor(totalMin / 60);
-    const min = totalMin % 60;
-    const endMin = totalMin + state.totalDuration;
-    if (endMin > endH * 60) continue;
-
-    // Block past slots on today
-    const isPastSlot = isToday && (
-      h < currentHour ||
-      (h === currentHour && min <= currentMin)
-    );
-
-    const isTaken = isPastSlot || bookedTimes.some(b => {
-      const bs = b.hour * 60 + b.minute;
-      const be = bs + b.duration;
-      return (totalMin < be && endMin > bs);
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwZFZCKf4TyxY5VDmJdqR0MxkYIPWjoYvy4VvnpR1IP2o4KU3tKlsJXpUq2SnnLDdiITQ/exec';
+  const dateStr2 = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+  try {
+    const res  = await fetch(`${GAS_URL}?date=${dateStr2}&branch=${state.branch}&duration=${state.totalDuration}`);
+    const data = await res.json();
+    data.slots.forEach(s => {
+      const [h, min] = s.time.split(':').map(Number);
+      const isPastSlot = isToday && (h < currentHour || (h === currentHour && min <= currentMin));
+      slots.push({ h, min, taken: s.taken || isPastSlot });
     });
-    slots.push({ h, min, taken: isTaken });
+  } catch(e) {
+    console.log('GAS error', e);
   }
 
   const dow = date.getDay();
@@ -3294,9 +3285,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== APP INIT =====
 function startApp() {
-  document.getElementById('loading').style.opacity = '0';
-  document.getElementById('loading').style.transition = 'opacity 0.5s';
-  setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 500);
+  const loadingEl = document.getElementById('loading');
+  loadingEl.style.transition = 'opacity 0.5s';
+  loadingEl.style.opacity = '0';
+  setTimeout(() => { loadingEl.style.display = 'none'; }, 600);
 
   // Check if Mirit is logged in
   if (localStorage.getItem('miritAdmin') === '1') {
