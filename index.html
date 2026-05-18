@@ -706,11 +706,12 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 <!-- ============================================================ -->
 <div id="screen-gallery" class="screen">
   <div class="statusbar"><span id="time-gallery" class="statusbar-time">9:41</span></div>
-  <div class="back-bar" onclick="goTo('screen-welcome')">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="9 18 15 12 9 6"></polyline>
-    </svg>
-    חזרה
+  <div class="top-bar">
+    <button class="back-btn" onclick="goTo('screen-home')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="top-bar-title">העבודות שלי</div>
+    <div style="width:36px"></div>
   </div>
   <div class="gallery-grid">
     <div class="g-cell" onclick="openGalleryLb(0)"><img src="gallery/img2.jpg" alt="עיצוב ציפורניים" style="object-position:center top"></div>
@@ -721,7 +722,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
     <div class="g-cell" onclick="openGalleryLb(5)"><img src="gallery/img5.jpg" alt="עיצוב ציפורניים" style="object-position:right 55%"></div>
     <div class="g-cell" onclick="openGalleryLb(6)"><img src="gallery/img3.jpg" alt="עיצוב ציפורניים" style="object-position:center 50%"></div>
   </div>
-  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding-bottom:80px;">
+  <div style="padding:16px 16px 100px;text-align:center">
     <button class="btn btn-primary" onclick="goTo('screen-booking')" style="width:100%;max-width:340px">הזמיני תור עכשיו ✨</button>
   </div>
 </div>
@@ -1136,7 +1137,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
     </div>
     <div class="stat">
       <div class="stat-num" id="stat-month">0</div>
-      <div class="stat-label">החודש</div>
+      <div class="stat-label">30 יום קדימה</div>
     </div>
   </div>
   <div class="reminder-banner" id="reminder-banner" onclick="window.showReminders()" style="display:none">
@@ -1585,13 +1586,15 @@ window.closeGalleryLb = closeGalleryLb;
 
 // ===== CUSTOMER INIT =====
 function initCustomerFlow() {
+  if (document.querySelector('.screen.active')) return;
   const saved = localStorage.getItem('customerData');
   if (saved) {
     const d = JSON.parse(saved);
     state.customerName = d.name || '';
     state.customerPhone = d.phone || '';
     loadWelcomeScreen(d.name);
-    goTo('screen-welcome');
+    const _pending = sessionStorage.getItem('pendingNav');
+    if (_pending) { sessionStorage.removeItem('pendingNav'); goTo(_pending); } else { goTo('screen-welcome'); }
   } else {
     goTo('screen-branch');
   }
@@ -1894,7 +1897,7 @@ function renderManualDatePicker() {
   const container = document.getElementById('mb-date-picker');
   const today = new Date(); today.setHours(0,0,0,0);
   let html = '';
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     const d = new Date(today.getTime() + i * 86400000);
     const isSelected = window._manualState.selectedDate &&
       window._manualState.selectedDate.toDateString() === d.toDateString();
@@ -1976,9 +1979,11 @@ async function renderManualTimes() {
   const startH = 9;
   const endH = branch === 'modiin' ? 16 : 18;
   const slots = [];
-  for (let h = startH; h < endH; h++) {
-    const totalMin = h * 60;
-    const endMin = totalMin + totalDuration;
+const step = ms.totalDuration;
+  for (let totalMin = startH * 60; totalMin < endH * 60; totalMin += step) {
+    const h = Math.floor(totalMin / 60);
+    const min = totalMin % 60;
+    const endMin = totalMin + ms.totalDuration;
     if (endMin > endH * 60) continue;
     const isPastHour = isToday && (h < currentHour || (h === currentHour && currentMin > 0));
     const isTaken = isPastHour || bookedTimes.some(b => {
@@ -1986,7 +1991,7 @@ async function renderManualTimes() {
       const be = bs + b.duration;
       return (totalMin < be && endMin > bs);
     });
-    slots.push({ h, min: 0, taken: isTaken });
+    slots.push({ h, min, taken: isTaken });
   }
 
   if (slots.length === 0) {
@@ -2259,20 +2264,25 @@ async function loadTimeSlots(date) {
   const startH = 9;
   const endH   = state.branch === 'modiin' ? 16 : 18;
   const slots = [];
-  for (let h = startH; h < endH; h++) {
-    const totalMin = h * 60;
+  const step = state.totalDuration;
+  for (let totalMin = startH * 60; totalMin < endH * 60; totalMin += step) {
+    const h = Math.floor(totalMin / 60);
+    const min = totalMin % 60;
     const endMin = totalMin + state.totalDuration;
     if (endMin > endH * 60) continue;
 
-    // Block past hours on today
-    const isPastHour = isToday && (h < currentHour || (h === currentHour && currentMin > 0));
+    // Block past slots on today
+    const isPastSlot = isToday && (
+      h < currentHour ||
+      (h === currentHour && min <= currentMin)
+    );
 
-    const isTaken = isPastHour || bookedTimes.some(b => {
+    const isTaken = isPastSlot || bookedTimes.some(b => {
       const bs = b.hour * 60 + b.minute;
       const be = bs + b.duration;
       return (totalMin < be && endMin > bs);
     });
-    slots.push({ h, min: 0, taken: isTaken });
+    slots.push({ h, min, taken: isTaken });
   }
 
   const dow = date.getDay();
@@ -2555,7 +2565,7 @@ async function loadMiritDashboard() {
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
   const dayAfterTomorrow = new Date(today); dayAfterTomorrow.setDate(today.getDate()+2);
   const weekEnd = new Date(today); weekEnd.setDate(today.getDate()+7);
-  const monthEnd = new Date(today.getFullYear(), today.getMonth()+1, 1);
+  const monthEnd = new Date(today.getTime() + 30 * 86400000);
 
   document.getElementById('today-date-label').textContent =
     today.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
