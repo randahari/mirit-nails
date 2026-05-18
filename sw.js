@@ -1,7 +1,7 @@
 // Mirit Nails Service Worker
 // Strategy: cache-first for shell, network-first for index.html (so updates are quick)
 
-const VERSION = 'v3.2.4'; // Bump on every deploy
+const VERSION = 'v3.2.5'; // Bump on every deploy
 const CACHE_NAME = `mirit-nails-${VERSION}`;
 const SHELL = [
   './',
@@ -53,7 +53,9 @@ self.addEventListener('fetch', (event) => {
     url.host.includes('gstatic.com') ||
     url.host.includes('cloudflare.com') ||
     url.host.includes('googleusercontent.com') ||
-    url.host.includes('fonts.googleapis')
+    url.host.includes('fonts.googleapis') ||
+    url.host.includes('script.google.com') ||
+    url.host.includes('script.googleusercontent.com')
   ) {
     return; // Let the browser handle it normally
   }

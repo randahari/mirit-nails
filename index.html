@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#fdf6f0">
-<meta name="apple-mobile-web-app-capable" content="yesh">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="מירית נייל קר">
 <title>Mirit Professional Nail Care</title>
@@ -722,13 +722,8 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
     <div class="g-cell" onclick="openGalleryLb(5)"><img src="gallery/img5.jpg" alt="עיצוב ציפורניים" style="object-position:right 55%"></div>
     <div class="g-cell" onclick="openGalleryLb(6)"><img src="gallery/img3.jpg" alt="עיצוב ציפורניים" style="object-position:center 50%"></div>
   </div>
-<<<<<<< HEAD
   <div style="padding:16px 16px 100px;text-align:center">
     <button class="btn btn-primary" onclick="goTo('screen-booking')" style="width:100%;max-width:340px">הזמיני תור עכשיו ✨</button>
-=======
-  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding-bottom:80px;">
-    <button class="btn btn-primary" onclick="goTo('screen-branch')" style="width:100%;max-width:340px">הזמיני תור עכשיו ✨</button>
->>>>>>> 47a39fc37316ec12906875a519d2795cbced7f03
   </div>
 </div>
 
@@ -1498,6 +1493,9 @@ function normalizePhoneForStorage(raw) {
 const WEBHOOK_BOOKING = 'https://hook.eu1.make.com/oi99znqb36jof3ctiydw7eray84cpo3s';
 const WEBHOOK_CANCEL  = 'https://hook.eu1.make.com/oc3iulppmf7vmfrtgm6otrpgc5pubxn5';
 
+// Apps Script — זמינות אמיתית מ-Google Calendar של מירית
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZFZCKf4TyxY5VDmJdqR0MxkYIPWjoYvy4VvnpR1IP2o4KU3tKlsJXpUq2SnnLDdiITQ/exec';
+
 // WhatsApp via Make webhook (Wappi) — no direct client-side messaging
 
 const HEBREW_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
@@ -1947,68 +1945,33 @@ async function renderManualTimes() {
   const isToday = date.getFullYear() === now.getFullYear() &&
                   date.getMonth() === now.getMonth() &&
                   date.getDate() === now.getDate();
-  const currentHour = now.getHours();
-  const currentMin = now.getMinutes();
-  const pad = n => String(n).padStart(2,'0');
-  const dateStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+  const currentTotalMin = now.getHours() * 60 + now.getMinutes();
+  const padNum = n => String(n).padStart(2,'0');
+  const dateStr = `${date.getFullYear()}-${padNum(date.getMonth()+1)}-${padNum(date.getDate())}`;
 
-  let bookedTimes = [];
   try {
-    const start = window._Timestamp.fromDate(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0,0,0));
-    const end   = window._Timestamp.fromDate(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23,59,59));
-    const q = window._query(
-      window._col(window._db,'appointments'),
-      window._where('datetime','>=',start),
-      window._where('datetime','<=',end),
-      window._where('status','in',['confirmed','pending'])
-    );
-    const snap = await window._getDocs(q);
-    snap.forEach(d => {
-      const dt = d.data().datetime.toDate();
-      const dur = d.data().duration || 60;
-      bookedTimes.push({ hour: dt.getHours(), minute: dt.getMinutes(), duration: dur });
-    });
-    const qb = window._query(
-      window._col(window._db,'blocked_slots'),
-      window._where('date','==',dateStr)
-    );
-    const snapB = await window._getDocs(qb);
-    snapB.forEach(d => {
-      const from = d.data().from.toDate();
-      const to   = d.data().to.toDate();
-      const dur = Math.round((to - from) / 60000);
-      bookedTimes.push({ hour: from.getHours(), minute: from.getMinutes(), duration: dur });
-    });
-  } catch(e) { console.log('mb slots error', e); }
+    const url = `${APPS_SCRIPT_URL}?date=${dateStr}&branch=${branch}&duration=${totalDuration}`;
+    const res  = await fetch(url);
+    const data = await res.json();
 
-  const startH = 9;
-  const endH = branch === 'modiin' ? 16 : 18;
-  const slots = [];
-const step = ms.totalDuration;
-  for (let totalMin = startH * 60; totalMin < endH * 60; totalMin += step) {
-    const h = Math.floor(totalMin / 60);
-    const min = totalMin % 60;
-    const endMin = totalMin + ms.totalDuration;
-    if (endMin > endH * 60) continue;
-    const isPastHour = isToday && (h < currentHour || (h === currentHour && currentMin > 0));
-    const isTaken = isPastHour || bookedTimes.some(b => {
-      const bs = b.hour * 60 + b.minute;
-      const be = bs + b.duration;
-      return (totalMin < be && endMin > bs);
-    });
-    slots.push({ h, min, taken: isTaken });
+    if (!data.slots || data.slots.length === 0) {
+      grid.innerHTML = '<div style="grid-column:1/-1;color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">אין שעות פנויות בתאריך הזה</div>';
+      return;
+    }
+
+    grid.innerHTML = data.slots.map(s => {
+      const [h, m]  = s.time.split(':').map(Number);
+      const slotMin = h * 60 + m;
+      const isPast  = isToday && slotMin <= currentTotalMin;
+      const isTaken = s.taken || isPast;
+      const isSelected = window._manualState.selectedTime === s.time;
+      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` mbSelectTime('${s.time}')`}">${s.time}</div>`;
+    }).join('');
+
+  } catch(e) {
+    console.log('renderManualTimes error', e);
+    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">שגיאה בטעינת שעות. נסי שוב.</div>';
   }
-
-  if (slots.length === 0) {
-    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">אין שעות פנויות בתאריך הזה</div>';
-    return;
-  }
-
-  grid.innerHTML = slots.map(s => {
-    const label = pad(s.h) + ':' + pad(s.min);
-    const isSelected = window._manualState.selectedTime === label;
-    return `<div class="slot${s.taken?' taken':''}${isSelected?' selected':''}" onclick="mbSelectTime('${label}')">${label}</div>`;
-  }).join('');
 }
 
 window.mbSelectTime = function(t) {
@@ -2220,74 +2183,41 @@ async function loadTimeSlots(date) {
   section.style.display = 'block';
   grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px">טוענת שעות...</div>';
 
-  // Check if today — block past hours
-  const now = new Date();
-  const isToday = date.getFullYear() === now.getFullYear() &&
-                  date.getMonth() === now.getMonth() &&
-                  date.getDate() === now.getDate();
-  const currentHour = now.getHours();
-  const currentMin  = now.getMinutes();
-
-  // Build dateStr in local time (YYYY-MM-DD)
-  const pad = n => String(n).padStart(2,'0');
-  const dateStr = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
-
-  let bookedTimes = [];
-  try {
-    const start = window._Timestamp.fromDate(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0,0,0));
-    const end   = window._Timestamp.fromDate(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23,59,59));
-
-    // Regular appointments
-    const q = window._query(
-      window._col(window._db,'appointments'),
-      window._where('datetime','>=',start),
-      window._where('datetime','<=',end),
-      window._where('status','in',['confirmed','pending'])
-    );
-    const snap = await window._getDocs(q);
-    snap.forEach(d => {
-      const dt = d.data().datetime.toDate();
-      const dur = d.data().duration || 60;
-      bookedTimes.push({ hour: dt.getHours(), minute: dt.getMinutes(), duration: dur });
-    });
-
-    // Blocked slots
-    const qb = window._query(
-      window._col(window._db,'blocked_slots'),
-      window._where('date','==',dateStr)
-    );
-    const snapB = await window._getDocs(qb);
-    snapB.forEach(d => {
-      const from = d.data().from.toDate();
-      const to   = d.data().to.toDate();
-      const dur = Math.round((to - from) / 60000);
-      bookedTimes.push({ hour: from.getHours(), minute: from.getMinutes(), duration: dur });
-    });
-  } catch(e) { console.log('slots error',e); }
-
-  // Generate slots: startH to endH, only full hours
-  const slots = [];
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwZFZCKf4TyxY5VDmJdqR0MxkYIPWjoYvy4VvnpR1IP2o4KU3tKlsJXpUq2SnnLDdiITQ/exec';
-  const dateStr2 = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-  try {
-    const res  = await fetch(`${GAS_URL}?date=${dateStr2}&branch=${state.branch}&duration=${state.totalDuration}`);
-    const data = await res.json();
-    data.slots.forEach(s => {
-      const [h, min] = s.time.split(':').map(Number);
-      const isPastSlot = isToday && (h < currentHour || (h === currentHour && min <= currentMin));
-      slots.push({ h, min, taken: s.taken || isPastSlot });
-    });
-  } catch(e) {
-    console.log('GAS error', e);
-  }
-
+  const padNum = n => String(n).padStart(2,'0');
+  const dateStr = `${date.getFullYear()}-${padNum(date.getMonth()+1)}-${padNum(date.getDate())}`;
   const dow = date.getDay();
   title.textContent = `שעות פנויות · ${HEBREW_DAYS_SHORT[dow]} ${date.getDate()} ב${HEBREW_MONTHS[date.getMonth()]}`;
-  grid.innerHTML = slots.map(s => {
-    const label = String(s.h).padStart(2,'0') + ':' + String(s.min).padStart(2,'0');
-    const isSelected = state.selectedTime === label;
-    return `<div class="slot${s.taken?' taken':''}${isSelected?' selected':''}" onclick="selectTime('${label}')">${label}</div>`;
-  }).join('');
+
+  // בדיקת שעות עבר (אם היום)
+  const now = new Date();
+  const isToday = date.getFullYear() === now.getFullYear() &&
+                  date.getMonth()    === now.getMonth()    &&
+                  date.getDate()     === now.getDate();
+  const currentTotalMin = now.getHours() * 60 + now.getMinutes();
+
+  try {
+    const url = `${APPS_SCRIPT_URL}?date=${dateStr}&branch=${state.branch}&duration=${state.totalDuration}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+
+    if (!data.slots || data.slots.length === 0) {
+      grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">אין שעות פנויות בתאריך הזה</div>';
+      return;
+    }
+
+    grid.innerHTML = data.slots.map(s => {
+      const [h, m]    = s.time.split(':').map(Number);
+      const slotMin   = h * 60 + m;
+      const isPast    = isToday && slotMin <= currentTotalMin;
+      const isTaken   = s.taken || isPast;
+      const isSelected = state.selectedTime === s.time;
+      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` selectTime('${s.time}')`}">${s.time}</div>`;
+    }).join('');
+
+  } catch(e) {
+    console.log('loadTimeSlots error', e);
+    grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">שגיאה בטעינת שעות. נסי שוב.</div>';
+  }
 }
 
 window.selectTime = function(t) {
@@ -3285,10 +3215,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== APP INIT =====
 function startApp() {
-  const loadingEl = document.getElementById('loading');
-  loadingEl.style.transition = 'opacity 0.5s';
-  loadingEl.style.opacity = '0';
-  setTimeout(() => { loadingEl.style.display = 'none'; }, 600);
+  document.getElementById('loading').style.opacity = '0';
+  document.getElementById('loading').style.transition = 'opacity 0.5s';
+  setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 500);
 
   // Check if Mirit is logged in
   if (localStorage.getItem('miritAdmin') === '1') {
