@@ -1637,7 +1637,7 @@ async function loadWelcomeScreen(name) {
             <div class="next-appt-service">${appt.services} · ${appt.branch === 'rehovot' ? 'רחובות' : 'מודיעין'}</div>
             <div class="next-appt-divider"></div>
             <div class="appt-mini-actions">
-              <div class="appt-mini-btn" onclick="addToCalendar('${appt.services}','${dt.toISOString()}',${appt.duration})">הוסיפי ליומן</div>
+              <div class="appt-mini-btn" onclick="addToCalendar('${appt.services.replace(/'/g, "\\'")}','${dt.toISOString()}',${appt.duration})">הוסיפי ליומן</div>
               <div class="appt-mini-btn" onclick="cancelAppt('${validDocs[0].id}')">ביטול</div>
             </div>
           </div>`;
@@ -1653,7 +1653,7 @@ async function loadWelcomeScreen(name) {
     </div>`;
 }
 
-window.addToCalendar = function(title, iso, dur) {
+window.addToCalendar = function(title, iso, dur) { title = title.replace(/\\'/g, "'");
   const start = new Date(iso);
   const end = new Date(start.getTime() + dur*60000);
   const fmt = d => d.toISOString().replace(/-|:|\.\d+/g,'');
@@ -2322,7 +2322,7 @@ window.submitBooking = async function() {
     phoneRaw, // keep original for display
     branch: state.branch,
     services: state.services.join(' + '),
-    duration: state.totalDuration,
+    duration: Number(state.totalDuration),
     datetime: window._Timestamp.fromDate(dt),
     chips,
     note,
