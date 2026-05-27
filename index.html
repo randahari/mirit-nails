@@ -200,7 +200,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 /* ===== Sticky bottom action ===== */
 .sticky-bottom{
   position:sticky;bottom:0;left:0;right:0;
-  padding:16px 24px max(32px, env(safe-area-inset-bottom));
+  padding:16px 24px max(96px, calc(env(safe-area-inset-bottom) + 88px));
   background:linear-gradient(180deg,rgba(253,246,240,0) 0%,var(--cream) 30%);
   margin-top:auto;z-index:50;flex-shrink:0;
 }
