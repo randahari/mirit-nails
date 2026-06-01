@@ -1965,7 +1965,8 @@ async function renderManualTimes() {
       const isPast  = isToday && slotMin <= currentTotalMin;
       const isTaken = s.taken || isPast;
       const isSelected = window._manualState.selectedTime === s.time;
-      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` mbSelectTime('${s.time}')`}">${s.time}</div>`;
+      if (isTaken) return '';
+return `<div class="slot${isSelected?' selected':''}" onclick="${isTaken?'':` mbSelectTime('${s.time}')`}">${s.time}</div>`;
     }).join('');
 
   } catch(e) {
@@ -2211,7 +2212,8 @@ async function loadTimeSlots(date) {
       const isPast    = isToday && slotMin <= currentTotalMin;
       const isTaken   = s.taken || isPast;
       const isSelected = state.selectedTime === s.time;
-      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` selectTime('${s.time}')`}">${s.time}</div>`;
+      if (isTaken) return '';
+return `<div class="slot${isSelected?' selected':''}" onclick="${isTaken?'':` selectTime('${s.time}')`}">${s.time}</div>`;
     }).join('');
 
   } catch(e) {
