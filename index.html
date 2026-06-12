@@ -1971,9 +1971,14 @@ async function renderManualTimes() {
       const slotMin = h * 60 + m;
       const isPast  = isToday && slotMin <= currentTotalMin;
       const isTaken = s.taken || isPast;
+      if (isTaken) return '';
       const isSelected = window._manualState.selectedTime === s.time;
-      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` mbSelectTime('${s.time}')`}">${s.time}</div>`;
+      return `<div class="slot${isSelected?' selected':''}" onclick="mbSelectTime('${s.time}')">${s.time}</div>`;
     }).join('');
+
+    if (!grid.innerHTML.trim()) {
+      grid.innerHTML = '<div style="grid-column:1/-1;color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">אין שעות פנויות בתאריך הזה</div>';
+    }
 
   } catch(e) {
     console.log('renderManualTimes error', e);
@@ -2251,9 +2256,14 @@ async function loadTimeSlots(date) {
       const slotMin   = h * 60 + m;
       const isPast    = isToday && slotMin <= currentTotalMin;
       const isTaken   = s.taken || isPast;
+      if (isTaken) return '';
       const isSelected = state.selectedTime === s.time;
-      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` selectTime('${s.time}')`}">${s.time}</div>`;
+      return `<div class="slot${isSelected?' selected':''}" onclick="selectTime('${s.time}')">${s.time}</div>`;
     }).join('');
+
+    if (!grid.innerHTML.trim()) {
+      grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">אין שעות פנויות בתאריך הזה</div>';
+    }
 
   } catch(e) {
     console.log('loadTimeSlots error', e);
