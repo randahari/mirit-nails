@@ -1959,14 +1959,20 @@ async function renderManualTimes() {
       return;
     }
 
+    const blockedRanges = await getBlockedRanges(dateStr);
+    if (blockedRanges.length) {
+      data.slots.forEach(s => {
+        if (isSlotBlocked(s.time, totalDuration, blockedRanges)) s.taken = true;
+      });
+    }
+
     grid.innerHTML = data.slots.map(s => {
       const [h, m]  = s.time.split(':').map(Number);
       const slotMin = h * 60 + m;
       const isPast  = isToday && slotMin <= currentTotalMin;
       const isTaken = s.taken || isPast;
       const isSelected = window._manualState.selectedTime === s.time;
-      if (isTaken) return '';
-return `<div class="slot${isSelected?' selected':''}" onclick="${isTaken?'':` mbSelectTime('${s.time}')`}">${s.time}</div>`;
+      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` mbSelectTime('${s.time}')`}">${s.time}</div>`;
     }).join('');
 
   } catch(e) {
@@ -2177,6 +2183,33 @@ window.selectDate = async function(y, m, d) {
   await loadTimeSlots(date);
 };
 
+// ===== BLOCKED SLOTS (Mirit's manual blocks from Firestore) =====
+async function getBlockedRanges(dateStr) {
+  const ranges = [];
+  try {
+    const snap = await window._getDocs(window._col(window._db, 'blocked_slots'));
+    snap.forEach(d => {
+      const b = d.data();
+      if (b.date === dateStr) {
+        const from = b.from.toDate();
+        const to = b.to.toDate();
+        ranges.push({
+          fromMin: from.getHours()*60 + from.getMinutes(),
+          toMin: to.getHours()*60 + to.getMinutes()
+        });
+      }
+    });
+  } catch(e) { console.log('getBlockedRanges error', e); }
+  return ranges;
+}
+
+function isSlotBlocked(timeStr, duration, ranges) {
+  const [h,m] = timeStr.split(':').map(Number);
+  const slotStart = h*60 + m;
+  const slotEnd = slotStart + duration;
+  return ranges.some(r => slotStart < r.toMin && slotEnd > r.fromMin);
+}
+
 async function loadTimeSlots(date) {
   const section = document.getElementById('time-slots-section');
   const grid = document.getElementById('slots-grid');
@@ -2206,14 +2239,20 @@ async function loadTimeSlots(date) {
       return;
     }
 
+    const blockedRanges = await getBlockedRanges(dateStr);
+    if (blockedRanges.length) {
+      data.slots.forEach(s => {
+        if (isSlotBlocked(s.time, state.totalDuration, blockedRanges)) s.taken = true;
+      });
+    }
+
     grid.innerHTML = data.slots.map(s => {
       const [h, m]    = s.time.split(':').map(Number);
       const slotMin   = h * 60 + m;
       const isPast    = isToday && slotMin <= currentTotalMin;
       const isTaken   = s.taken || isPast;
       const isSelected = state.selectedTime === s.time;
-      if (isTaken) return '';
-return `<div class="slot${isSelected?' selected':''}" onclick="${isTaken?'':` selectTime('${s.time}')`}">${s.time}</div>`;
+      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` selectTime('${s.time}')`}">${s.time}</div>`;
     }).join('');
 
   } catch(e) {
