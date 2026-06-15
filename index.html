@@ -47,6 +47,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   background:linear-gradient(160deg,#f3e3d4 0%,#fdf6f0 55%,#e8d9c6 100%);
   display:none;
   flex-direction:column;
+  padding-bottom:90px;
 }
 .screen.active{display:flex}
 .screen::-webkit-scrollbar{display:none}
@@ -1959,26 +1960,14 @@ async function renderManualTimes() {
       return;
     }
 
-    const blockedRanges = await getBlockedRanges(dateStr);
-    if (blockedRanges.length) {
-      data.slots.forEach(s => {
-        if (isSlotBlocked(s.time, totalDuration, blockedRanges)) s.taken = true;
-      });
-    }
-
     grid.innerHTML = data.slots.map(s => {
       const [h, m]  = s.time.split(':').map(Number);
       const slotMin = h * 60 + m;
       const isPast  = isToday && slotMin <= currentTotalMin;
       const isTaken = s.taken || isPast;
-      if (isTaken) return '';
       const isSelected = window._manualState.selectedTime === s.time;
-      return `<div class="slot${isSelected?' selected':''}" onclick="mbSelectTime('${s.time}')">${s.time}</div>`;
+      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` mbSelectTime('${s.time}')`}">${s.time}</div>`;
     }).join('');
-
-    if (!grid.innerHTML.trim()) {
-      grid.innerHTML = '<div style="grid-column:1/-1;color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">אין שעות פנויות בתאריך הזה</div>';
-    }
 
   } catch(e) {
     console.log('renderManualTimes error', e);
@@ -2188,33 +2177,6 @@ window.selectDate = async function(y, m, d) {
   await loadTimeSlots(date);
 };
 
-// ===== BLOCKED SLOTS (Mirit's manual blocks from Firestore) =====
-async function getBlockedRanges(dateStr) {
-  const ranges = [];
-  try {
-    const snap = await window._getDocs(window._col(window._db, 'blocked_slots'));
-    snap.forEach(d => {
-      const b = d.data();
-      if (b.date === dateStr) {
-        const from = b.from.toDate();
-        const to = b.to.toDate();
-        ranges.push({
-          fromMin: from.getHours()*60 + from.getMinutes(),
-          toMin: to.getHours()*60 + to.getMinutes()
-        });
-      }
-    });
-  } catch(e) { console.log('getBlockedRanges error', e); }
-  return ranges;
-}
-
-function isSlotBlocked(timeStr, duration, ranges) {
-  const [h,m] = timeStr.split(':').map(Number);
-  const slotStart = h*60 + m;
-  const slotEnd = slotStart + duration;
-  return ranges.some(r => slotStart < r.toMin && slotEnd > r.fromMin);
-}
-
 async function loadTimeSlots(date) {
   const section = document.getElementById('time-slots-section');
   const grid = document.getElementById('slots-grid');
@@ -2244,26 +2206,14 @@ async function loadTimeSlots(date) {
       return;
     }
 
-    const blockedRanges = await getBlockedRanges(dateStr);
-    if (blockedRanges.length) {
-      data.slots.forEach(s => {
-        if (isSlotBlocked(s.time, state.totalDuration, blockedRanges)) s.taken = true;
-      });
-    }
-
     grid.innerHTML = data.slots.map(s => {
       const [h, m]    = s.time.split(':').map(Number);
       const slotMin   = h * 60 + m;
       const isPast    = isToday && slotMin <= currentTotalMin;
       const isTaken   = s.taken || isPast;
-      if (isTaken) return '';
       const isSelected = state.selectedTime === s.time;
-      return `<div class="slot${isSelected?' selected':''}" onclick="selectTime('${s.time}')">${s.time}</div>`;
+      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` selectTime('${s.time}')`}">${s.time}</div>`;
     }).join('');
-
-    if (!grid.innerHTML.trim()) {
-      grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">אין שעות פנויות בתאריך הזה</div>';
-    }
 
   } catch(e) {
     console.log('loadTimeSlots error', e);
