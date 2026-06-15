@@ -2197,9 +2197,24 @@ async function loadTimeSlots(date) {
   const currentTotalMin = now.getHours() * 60 + now.getMinutes();
 
   try {
-    const url = `${APPS_SCRIPT_URL}?date=${dateStr}&branch=${state.branch}&duration=${state.totalDuration}`;
-    const res  = await fetch(url);
+    // טעינת סלוטים מ-Apps Script + חסימות מ-Firestore במקביל
+    const [res, blockedSnap] = await Promise.all([
+      fetch(`${APPS_SCRIPT_URL}?date=${dateStr}&branch=${state.branch}&duration=${state.totalDuration}`),
+      window._getDocs(window._col(window._db, 'blocked_slots'))
+    ]);
     const data = await res.json();
+
+    // בניית רשימת חסימות לתאריך הנבחר
+    const blocked = [];
+    blockedSnap.forEach(d => {
+      const b = d.data();
+      if (b.date === dateStr) {
+        blocked.push({
+          from: b.from.toDate(),
+          to:   b.to.toDate()
+        });
+      }
+    });
 
     if (!data.slots || data.slots.length === 0) {
       grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">אין שעות פנויות בתאריך הזה</div>';
@@ -2210,7 +2225,15 @@ async function loadTimeSlots(date) {
       const [h, m]    = s.time.split(':').map(Number);
       const slotMin   = h * 60 + m;
       const isPast    = isToday && slotMin <= currentTotalMin;
-      const isTaken   = s.taken || isPast;
+
+      // בדיקה אם הסלוט חופף לחסימה ב-Firestore
+      const slotStart = new Date(date);
+      slotStart.setHours(h, m, 0, 0);
+      const slotEnd = new Date(slotStart);
+      slotEnd.setMinutes(slotEnd.getMinutes() + state.totalDuration);
+      const isBlocked = blocked.some(b => slotStart < b.to && slotEnd > b.from);
+
+      const isTaken   = s.taken || isPast || isBlocked;
       const isSelected = state.selectedTime === s.time;
       return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` selectTime('${s.time}')`}">${s.time}</div>`;
     }).join('');
