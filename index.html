@@ -851,6 +851,29 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
         <div class="wa-sub">שלחי הודעה למירית ישירות</div>
       </div>
     </div>
+    <div style="margin-top:14px;text-align:center;padding:13px 16px;border-radius:14px;border:1.5px dashed var(--rose-gold-light);background:rgba(201,164,122,0.06);cursor:pointer" onclick="showReturningModal()">
+      <div style="font-size:14px;font-weight:600;color:var(--rose-gold-dark)">כבר לקוחה? כניסה לתורים שלי</div>
+      <div style="font-size:11px;color:var(--ink-mute);margin-top:3px">הזיני מספר טלפון וצפי בתורים הקיימים שלך</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RETURNING CUSTOMER MODAL ===== -->
+<div id="returning-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(61,47,36,0.45);align-items:flex-end;justify-content:center">
+  <div style="background:var(--cream);border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:480px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;color:var(--ink)">כניסה לתורים שלי</div>
+      <div onclick="hideReturningModal()" style="cursor:pointer;color:var(--ink-mute);font-size:22px;line-height:1">✕</div>
+    </div>
+    <div style="font-size:13px;color:var(--ink-mute);margin-bottom:18px">הזיני את מספר הטלפון איתו הזמנת בעבר</div>
+    <input id="returning-phone" type="tel" inputmode="numeric" placeholder="05X-XXXXXXX"
+      style="width:100%;padding:14px 16px;border-radius:12px;border:1.5px solid var(--line);background:var(--white);font-size:16px;font-family:'Heebo',sans-serif;color:var(--ink);text-align:right;direction:ltr;outline:none"
+      oninput="checkReturningForm()" onkeydown="if(event.key==='Enter')submitReturning()">
+    <div id="returning-error" style="display:none;color:var(--danger);font-size:12px;margin-top:8px;text-align:center"></div>
+    <button id="returning-submit-btn" onclick="submitReturning()"
+      style="margin-top:18px;width:100%;padding:16px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--rose-gold),var(--rose-gold-dark));color:white;font-size:16px;font-family:'Heebo',sans-serif;font-weight:600;cursor:pointer;opacity:0.4;pointer-events:none">
+      כניסה
+    </button>
   </div>
 </div>
 
@@ -1560,6 +1583,74 @@ window.openWaze = function(address) {
   window.location.href = `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
 };
 
+
+// ===== RETURNING CUSTOMER MODAL =====
+window.showReturningModal = function() {
+  const m = document.getElementById('returning-modal');
+  m.style.display = 'flex';
+  document.getElementById('returning-phone').value = '';
+  document.getElementById('returning-error').style.display = 'none';
+  document.getElementById('returning-submit-btn').style.opacity = '0.4';
+  document.getElementById('returning-submit-btn').style.pointerEvents = 'none';
+  setTimeout(() => document.getElementById('returning-phone').focus(), 100);
+};
+
+window.hideReturningModal = function() {
+  document.getElementById('returning-modal').style.display = 'none';
+};
+
+window.checkReturningForm = function() {
+  const val = document.getElementById('returning-phone').value.trim();
+  const ok = val.replace(/\D/g,'').length >= 9;
+  const btn = document.getElementById('returning-submit-btn');
+  btn.style.opacity = ok ? '1' : '0.4';
+  btn.style.pointerEvents = ok ? 'all' : 'none';
+};
+
+window.submitReturning = async function() {
+  const phoneRaw = document.getElementById('returning-phone').value.trim();
+  const phone = normalizePhoneForStorage(phoneRaw);
+  const errEl = document.getElementById('returning-error');
+  const btn = document.getElementById('returning-submit-btn');
+
+  errEl.style.display = 'none';
+  btn.textContent = 'מחפשת...';
+  btn.style.opacity = '0.7';
+  btn.style.pointerEvents = 'none';
+
+  try {
+    const q = window._query(
+      window._col(window._db, 'appointments'),
+      window._where('phone', '==', phone)
+    );
+    const snap = await window._getDocs(q);
+
+    if (snap.empty) {
+      errEl.textContent = 'לא מצאנו תורים עם מספר זה. רוצה להזמין תור חדש?';
+      errEl.style.display = 'block';
+      btn.textContent = 'כניסה';
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'all';
+      return;
+    }
+
+    const firstDoc = snap.docs[0].data();
+    const name = firstDoc.name || '';
+    localStorage.setItem('customerData', JSON.stringify({ name, phone }));
+    state.customerName = name;
+    state.customerPhone = phone;
+
+    window.hideReturningModal();
+    loadWelcomeScreen(name);
+    goTo('screen-welcome');
+  } catch(e) {
+    errEl.textContent = 'שגיאה בחיפוש. נסי שוב.';
+    errEl.style.display = 'block';
+    btn.textContent = 'כניסה';
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'all';
+  }
+};
 
 function openWA(phone, msg) {
   const clean = phone.replace(/\D/g,'').replace(/^0/,'972');
