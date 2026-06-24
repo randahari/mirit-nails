@@ -1400,6 +1400,45 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   </div>
 </div>
 
+<!-- Mirit edit appointment modal -->
+<div class="modal-overlay" id="mirit-edit-modal" style="align-items:flex-end;padding:0">
+  <div style="background:var(--cream);border-radius:28px 28px 0 0;padding:28px 24px max(32px,env(safe-area-inset-bottom));width:100%;max-width:480px;margin:0 auto;max-height:92vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500">✏️ עריכת תור</div>
+      <div onclick="hideMiritEditModal()" style="width:32px;height:32px;border-radius:50%;background:var(--rose-blush);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);font-size:18px">×</div>
+    </div>
+    <!-- Client info (read-only) -->
+    <div id="edit-client-info" style="background:rgba(201,164,122,0.08);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:20px;font-size:14px;color:var(--ink-soft)"></div>
+    <!-- Services -->
+    <div style="margin-bottom:16px">
+      <div class="input-label">טיפולים</div>
+      <div id="edit-services-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div id="edit-duration-summary" style="margin-top:10px;padding:10px;background:rgba(201,164,122,0.08);border-radius:12px;font-size:13px;color:var(--rose-gold-dark);text-align:center;display:none">
+        <span id="edit-duration-text"></span>
+      </div>
+    </div>
+    <!-- Date -->
+    <div style="margin-bottom:16px">
+      <div class="input-label">תאריך חדש</div>
+      <div id="edit-cal-strip" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none"></div>
+    </div>
+    <!-- Time -->
+    <div style="margin-bottom:16px">
+      <div class="input-label">שעה חדשה</div>
+      <div id="edit-time-grid" class="time-grid" style="margin-top:8px">
+        <div style="color:var(--ink-mute);font-size:13px;text-align:center;grid-column:1/-1;padding:8px">בחרי תאריך תחילה</div>
+      </div>
+    </div>
+    <!-- Note -->
+    <div style="margin-bottom:24px">
+      <div class="input-label">הערה (אופציונלי)</div>
+      <input class="input" type="text" id="edit-note" placeholder="הערה לתור..." style="font-size:15px">
+    </div>
+    <button class="btn btn-primary" id="edit-submit-btn" onclick="confirmEditAppt()" style="opacity:0.4;pointer-events:none">שמרי שינוי</button>
+    <button class="btn btn-ghost" onclick="hideMiritEditModal()" style="margin-top:10px;padding:14px;font-size:14px">ביטול</button>
+  </div>
+</div>
+
 <!-- Admin login modal -->
 <div id="admin-modal" style="display:none;position:fixed;inset:0;background:rgba(61,47,36,0.6);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px">
   <div style="background:var(--cream);border-radius:28px;padding:32px 28px;width:100%;max-width:380px;box-shadow:var(--shadow-lg)">
@@ -2706,6 +2745,9 @@ function renderApptList(containerId, appts, opts = {}) {
         <div class="icon-btn" onclick="openWA('${a.phone}','היי ${a.name}!')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
         </div>
+        <div class="icon-btn" style="border-color:var(--rose-gold);color:var(--rose-gold-dark)" onclick="miritEditAppt('${a.id}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
         <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </div>
@@ -2765,6 +2807,9 @@ function renderWeekGrouped(containerId, appts, startDate) {
             <div class="appt-actions">
               <div class="icon-btn" onclick="openWA('${a.phone}','היי ${a.name}!')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
+              </div>
+              <div class="icon-btn" style="border-color:var(--rose-gold);color:var(--rose-gold-dark)" onclick="miritEditAppt('${a.id}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </div>
               <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -3022,6 +3067,9 @@ async function loadMiritAppts() {
           <div class="icon-btn" onclick="openWA('${a.phone}','היי ${a.name}!')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
           </div>
+          <div class="icon-btn" style="border-color:var(--rose-gold);color:var(--rose-gold-dark)" onclick="miritEditAppt('${a.id}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
           <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </div>
@@ -3070,6 +3118,320 @@ window.miritCancelAppt = async function(id) {
 window.hideMiritCancelModal = function() {
   document.getElementById('mirit-cancel-modal').classList.remove('show');
   window._pendingCancel = null;
+};
+
+// ===== EDIT APPOINTMENT (MIRIT) =====
+window._editState = {
+  apptId: null,
+  appt: null,
+  services: [],
+  totalDuration: 0,
+  selectedDate: null,
+  selectedTime: null
+};
+
+window.miritEditAppt = async function(id) {
+  try {
+    const ref = window._doc(window._db,'appointments',id);
+    const snap = await window._getDoc(ref);
+    if (!snap.exists()) { showToast('התור לא נמצא'); return; }
+    const a = snap.data();
+    const dt = a.datetime.toDate();
+
+    // Parse existing services into array
+    const existingServices = a.services ? a.services.split(' + ') : [];
+    const totalDur = a.duration || 0;
+
+    window._editState = {
+      apptId: id,
+      appt: a,
+      services: existingServices.slice(),
+      totalDuration: totalDur,
+      selectedDate: null,
+      selectedTime: null
+    };
+
+    // Client info
+    const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+    const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+    const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('edit-client-info').innerHTML =
+      `<strong>${a.name}</strong> &nbsp;·&nbsp; ${a.phone}<br>
+       <span style="font-size:12px">תור נוכחי: ${dateStr} ${timeStr} · ${branch}</span>`;
+
+    // Note
+    document.getElementById('edit-note').value = a.note || '';
+
+    // Render services checkboxes
+    const container = document.getElementById('edit-services-list');
+    container.innerHTML = '';
+    SERVICES_DATA.forEach(s => {
+      const isActive = existingServices.includes(s.name);
+      const div = document.createElement('div');
+      div.className = 'service-card' + (isActive ? ' active' : '');
+      div.setAttribute('data-edit-service', s.name);
+      div.setAttribute('data-edit-duration', s.duration);
+      div.onclick = function(){ editToggleService(this); };
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:500;font-size:15px">${s.name}</div>
+          <div style="font-size:13px;color:var(--ink-mute)">${s.duration} דק'</div>
+        </div>`;
+      container.appendChild(div);
+    });
+    updateEditDurationSummary();
+
+    // Render calendar strip (30 days)
+    renderEditCalStrip();
+
+    // Reset time grid
+    document.getElementById('edit-time-grid').innerHTML =
+      '<div style="color:var(--ink-mute);font-size:13px;text-align:center;grid-column:1/-1;padding:8px">בחרי תאריך תחילה</div>';
+
+    checkEditForm();
+    document.getElementById('mirit-edit-modal').classList.add('show');
+  } catch(e) {
+    console.error(e);
+    showToast('שגיאה בטעינת התור');
+  }
+};
+
+function editToggleService(card) {
+  const svc = card.getAttribute('data-edit-service');
+  const dur = parseInt(card.getAttribute('data-edit-duration'));
+  const idx = window._editState.services.indexOf(svc);
+  if (idx === -1) {
+    window._editState.services.push(svc);
+    window._editState.totalDuration += dur;
+    card.classList.add('active');
+  } else {
+    window._editState.services.splice(idx, 1);
+    window._editState.totalDuration -= dur;
+    card.classList.remove('active');
+  }
+  updateEditDurationSummary();
+  // Reset time when services change (duration affects availability)
+  window._editState.selectedTime = null;
+  if (window._editState.selectedDate) renderEditTimes();
+  checkEditForm();
+}
+
+function updateEditDurationSummary() {
+  const sum = document.getElementById('edit-duration-summary');
+  const txt = document.getElementById('edit-duration-text');
+  if (window._editState.totalDuration > 0) {
+    sum.style.display = 'block';
+    txt.textContent = `סה"כ משך: ${window._editState.totalDuration} דקות`;
+  } else {
+    sum.style.display = 'none';
+  }
+}
+
+function renderEditCalStrip() {
+  const strip = document.getElementById('edit-cal-strip');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today.getTime() + i * 86400000);
+    days.push(d);
+  }
+  strip.innerHTML = days.map((d, i) => {
+    const isSelected = window._editState.selectedDate &&
+      window._editState.selectedDate.toDateString() === d.toDateString();
+    const dayName = i === 0 ? 'היום' : i === 1 ? 'מחר' : `יום ${HEBREW_DAYS_SHORT[d.getDay()]}`;
+    const dayNum = d.getDate();
+    const mon = HEBREW_MONTHS[d.getMonth()];
+    return `<div class="cal-day${isSelected?' selected':''}" onclick="editSelectDay(${i})" style="flex-shrink:0;min-width:56px;text-align:center;padding:10px 8px;border-radius:14px;border:1px solid var(--line);background:${isSelected?'linear-gradient(135deg,var(--rose-gold),var(--rose-gold-dark))':'var(--white)'};color:${isSelected?'white':'var(--ink)'};cursor:pointer">
+      <div style="font-size:10px;font-weight:500;opacity:0.7">${dayName}</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;line-height:1.2">${dayNum}</div>
+      <div style="font-size:10px;opacity:0.7">${mon}</div>
+    </div>`;
+  }).join('');
+}
+
+window.editSelectDay = function(offset) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  window._editState.selectedDate = new Date(today.getTime() + offset * 86400000);
+  window._editState.selectedTime = null;
+  renderEditCalStrip();
+  renderEditTimes();
+  checkEditForm();
+};
+
+async function renderEditTimes() {
+  const grid = document.getElementById('edit-time-grid');
+  const es = window._editState;
+  if (!es.selectedDate || es.totalDuration === 0) {
+    grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;grid-column:1/-1;padding:8px">בחרי טיפול ותאריך</div>';
+    return;
+  }
+  grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;grid-column:1/-1;padding:8px">טוענת שעות...</div>';
+
+  try {
+    const date = es.selectedDate;
+    const branch = es.appt.branch;
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    const url = `${APPS_SCRIPT_URL}?date=${dateStr}&branch=${branch}&duration=${es.totalDuration}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    // Fetch blocked slots from Firestore
+    const blocked = [];
+    const blockedSnap = await window._getDocs(window._col(window._db,'blocked_slots'));
+    blockedSnap.forEach(d => {
+      const b = d.data();
+      if (b.date === dateStr) {
+        blocked.push({ from: b.from.toDate(), to: b.to.toDate() });
+      }
+    });
+
+    if (!data.slots || data.slots.length === 0) {
+      grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;grid-column:1/-1;padding:8px">אין שעות פנויות בתאריך הזה</div>';
+      return;
+    }
+
+    const isToday = date.toDateString() === new Date().toDateString();
+    const now = new Date();
+    const currentTotalMin = now.getHours() * 60 + now.getMinutes();
+
+    grid.innerHTML = data.slots.map(s => {
+      const [h, m] = s.time.split(':').map(Number);
+      const slotMin = h * 60 + m;
+      const isPast = isToday && slotMin <= currentTotalMin;
+      const slotStart = new Date(date); slotStart.setHours(h, m, 0, 0);
+      const slotEnd = new Date(slotStart); slotEnd.setMinutes(slotEnd.getMinutes() + es.totalDuration);
+      const isBlocked = blocked.some(b => slotStart < b.to && slotEnd > b.from);
+      const isTaken = s.taken || isPast || isBlocked;
+      const isSelected = es.selectedTime === s.time;
+      return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken ? '' : `editSelectTime('${s.time}')`}">${s.time}</div>`;
+    }).join('');
+  } catch(e) {
+    console.error(e);
+    grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;grid-column:1/-1;padding:8px">שגיאה בטעינת שעות</div>';
+  }
+}
+
+window.editSelectTime = function(t) {
+  window._editState.selectedTime = t;
+  document.querySelectorAll('#edit-time-grid .slot').forEach(s => {
+    s.classList.toggle('selected', s.textContent.trim() === t);
+  });
+  checkEditForm();
+};
+
+function checkEditForm() {
+  const es = window._editState;
+  const ok = es.services.length > 0 && es.selectedDate && es.selectedTime;
+  const btn = document.getElementById('edit-submit-btn');
+  btn.style.opacity = ok ? '1' : '0.4';
+  btn.style.pointerEvents = ok ? 'all' : 'none';
+}
+
+window.hideMiritEditModal = function() {
+  document.getElementById('mirit-edit-modal').classList.remove('show');
+  window._editState = { apptId:null, appt:null, services:[], totalDuration:0, selectedDate:null, selectedTime:null };
+};
+
+window.confirmEditAppt = async function() {
+  const es = window._editState;
+  if (!es.apptId || !es.selectedDate || !es.selectedTime || es.services.length === 0) return;
+
+  const btn = document.getElementById('edit-submit-btn');
+  btn.style.opacity = '0.5';
+  btn.style.pointerEvents = 'none';
+  btn.textContent = 'שומרת...';
+
+  try {
+    const [h, m] = es.selectedTime.split(':').map(Number);
+    const newDt = new Date(es.selectedDate);
+    newDt.setHours(h, m, 0, 0);
+    const newNote = document.getElementById('edit-note').value.trim();
+    const a = es.appt;
+
+    // 1) Silent cancel webhook — removes old Calendar event, NO WhatsApp
+    try {
+      const oldDt = a.datetime.toDate();
+      const oldBranch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+      fetch(WEBHOOK_CANCEL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appointment_id: es.apptId,
+          event_id: a.eventId || null,
+          name: a.name,
+          phone: a.phone,
+          branch: oldBranch,
+          services: a.services,
+          duration: a.duration,
+          date: oldDt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),
+          time: oldDt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}),
+          datetime_iso: oldDt.toISOString(),
+          cancelled_by: 'mirit_edit',
+          late_cancellation: false,
+          silent: true   // ← Make Router: no WhatsApp on this path
+        })
+      }).catch(() => {});
+    } catch(e) {}
+
+    // 2) Update Firestore with new data
+    const newServices = es.services.join(' + ');
+    await window._updateDoc(window._doc(window._db,'appointments',es.apptId), {
+      datetime: window._Timestamp.fromDate(newDt),
+      services: newServices,
+      duration: es.totalDuration,
+      note: newNote,
+      eventId: null,          // will be updated when Make returns new eventId
+      reminderSent: false,    // reset so reminder goes out for new time
+      editedAt: window._Timestamp.now(),
+      editedBy: 'mirit'
+    });
+
+    // 3) Booking webhook — creates new Calendar event + sends WhatsApp "עדכון תור"
+    try {
+      const branchFull = a.branch === 'rehovot' ? 'רחובות - חיים קאופמן 8' : 'מודיעין - קייזר סנטר';
+      fetch(WEBHOOK_BOOKING, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: a.name,
+          phone: a.phone,
+          branch: branchFull,
+          services: newServices,
+          duration: es.totalDuration,
+          date: newDt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),
+          time: es.selectedTime,
+          datetime_iso: newDt.toISOString(),
+          appointment_id: es.apptId,
+          is_edit: true   // optional flag for Make to customize WhatsApp message
+        })
+      }).then(async (res) => {
+        try {
+          const text = await res.text();
+          let eventId = null;
+          try { eventId = (JSON.parse(text) || {}).event_id || null; } catch(e) {
+            if (text && text.length < 200 && !text.includes('Accepted')) eventId = text.trim();
+          }
+          if (eventId) {
+            window._updateDoc(window._doc(window._db,'appointments',es.apptId), { eventId }).catch(() => {});
+          }
+        } catch(e) {}
+      }).catch(() => {});
+    } catch(e) {}
+
+    hideMiritEditModal();
+    showToast('התור עודכן בהצלחה ✓');
+
+    // Refresh whichever dashboard is visible
+    if (document.getElementById('screen-mirit').classList.contains('active')) loadMiritDashboard();
+    if (document.getElementById('screen-mirit-appts').classList.contains('active')) loadMiritAppts();
+
+  } catch(e) {
+    console.error(e);
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'all';
+    btn.textContent = 'שמרי שינוי';
+    showToast('שגיאה בעדכון התור. נסי שוב.');
+  }
 };
 
 window.applyApptFilter = function() {
