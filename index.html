@@ -3271,7 +3271,7 @@ async function renderEditTimes() {
     const date = es.selectedDate;
     const branch = es.appt.branch;
     const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-    const excludeParam = es.appt.eventId ? `&excludeEventId=${encodeURIComponent(es.appt.eventId)}` : '';
+    const excludeParam = es.appt.datetime ? `&excludeStart=${encodeURIComponent(es.appt.datetime.toDate().toISOString())}` : '';
     const url = `${APPS_SCRIPT_URL}?date=${dateStr}&branch=${branch}&duration=${es.totalDuration}${excludeParam}`;
     const res = await fetch(url);
     const data = await res.json();
