@@ -47,7 +47,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   background:linear-gradient(160deg,#f3e3d4 0%,#fdf6f0 55%,#e8d9c6 100%);
   display:none;
   flex-direction:column;
-  padding-bottom:90px;
+  padding-bottom:calc(96px + env(safe-area-inset-bottom));
 }
 .screen.active{display:flex}
 .screen::-webkit-scrollbar{display:none}
@@ -200,11 +200,19 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 
 /* ===== Sticky bottom action ===== */
 .sticky-bottom{
-  position:sticky;bottom:0;left:0;right:0;
-  padding:16px 24px max(96px, calc(env(safe-area-inset-bottom) + 88px));
-  background:linear-gradient(180deg,rgba(253,246,240,0) 0%,var(--cream) 30%);
-  margin-top:auto;z-index:50;flex-shrink:0;
+  position:fixed;bottom:0;left:0;right:0;
+  padding:14px 24px max(20px, env(safe-area-inset-bottom));
+  background:rgba(253,246,240,.97);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--line);
+  z-index:80;
 }
+/* on screens that also show the bottom nav (manual booking), lift the bar above it */
+#screen-manual-booking .sticky-bottom{
+  bottom:calc(84px + env(safe-area-inset-bottom));
+  padding-bottom:14px;
+}
+#screen-manual-booking{padding-bottom:calc(175px + env(safe-area-inset-bottom))}
 
 /* ===== WhatsApp button ===== */
 .wa-btn{
