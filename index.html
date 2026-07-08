@@ -2307,6 +2307,20 @@ window.selectDate = async function(y, m, d) {
   await loadTimeSlots(date);
 };
 
+// Loads Mirit's working-hours settings from Firestore once (the customer flow never opens the admin screen).
+async function ensureAvailabilityLoaded() {
+  if (state._availLoaded) return;
+  try {
+    const snap = await window._getDoc(window._doc(window._db,'availability','settings'));
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.rehovot) state.availability.rehovot = data.rehovot;
+      if (data.modiin)  state.availability.modiin  = data.modiin;
+    }
+  } catch(e) { console.log('ensureAvailabilityLoaded error', e); }
+  state._availLoaded = true;
+}
+
 async function loadTimeSlots(date) {
   const section = document.getElementById('time-slots-section');
   const grid = document.getElementById('slots-grid');
@@ -2327,6 +2341,18 @@ async function loadTimeSlots(date) {
   const currentTotalMin = now.getHours() * 60 + now.getMinutes();
 
   try {
+    await ensureAvailabilityLoaded();
+    const branchCfg = state.availability[state.branch] || {};
+    const dayCfg = branchCfg[dow];
+    if (dayCfg && dayCfg.open === false) {
+      grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">סגור ליום זה</div>';
+      return;
+    }
+    const toMin = t => { const [hh,mm] = String(t).split(':').map(Number); return hh*60 + mm; };
+    const openMin  = toMin(dayCfg?.start || '09:00');
+    const closeMin = toMin(dayCfg?.end   || (state.branch === 'modiin' ? '16:00' : '17:00'));
+    const dur      = Number(state.totalDuration) || 0;
+
     // טעינת סלוטים מ-Apps Script + חסימות מ-Firestore במקביל
     const [res, blockedSnap] = await Promise.all([
       fetch(`${APPS_SCRIPT_URL}?date=${dateStr}&branch=${state.branch}&duration=${state.totalDuration}`),
@@ -2346,12 +2372,18 @@ async function loadTimeSlots(date) {
       }
     });
 
-    if (!data.slots || data.slots.length === 0) {
+    // סינון לפי שעות העבודה של מירית ליום/סניף — הסלוט חייב להתחיל ולהסתיים בתוך השעות
+    const slots = (data.slots || []).filter(s => {
+      const st = toMin(s.time);
+      return st >= openMin && st + dur <= closeMin;
+    });
+
+    if (slots.length === 0) {
       grid.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:12px">אין שעות פנויות בתאריך הזה</div>';
       return;
     }
 
-    grid.innerHTML = data.slots.map(s => {
+    grid.innerHTML = slots.map(s => {
       const [h, m]    = s.time.split(':').map(Number);
       const slotMin   = h * 60 + m;
       const isPast    = isToday && slotMin <= currentTotalMin;
