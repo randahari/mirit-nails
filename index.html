@@ -1382,6 +1382,21 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   </div>
 </div>
 
+<!-- Same-day booking → WhatsApp only (customer side) -->
+<div class="modal-overlay" id="sameday-modal">
+  <div class="modal-card">
+    <div class="modal-icon info">🗓️</div>
+    <div class="modal-title">תור להיום</div>
+    <div class="modal-body">
+      תור להיום נקבע ישירות מול מירית בוואטסאפ 🤍
+    </div>
+    <div class="modal-actions">
+      <button class="btn" style="background:#25a15a;color:#fff" onclick="samedayWhatsApp()">פנייה למירית בוואטסאפ</button>
+      <button class="btn btn-ghost" onclick="hideSamedayModal()">בחירת תאריך אחר</button>
+    </div>
+  </div>
+</div>
+
 <!-- Cancel appointment confirmation modal (customer side) -->
 <div class="modal-overlay" id="cancel-modal">
   <div class="modal-card">
@@ -2307,6 +2322,14 @@ window.selectDate = async function(y, m, d) {
   const date = new Date(y, m, d);
   const dow = date.getDay();
   if (!BRANCH_DAYS[state.branch].includes(dow)) return;
+
+  // תור לאותו יום — נקבע רק מול מירית בוואטסאפ, לא נטענות שעות בממשק הלקוחות
+  const _today = new Date();
+  const _isToday = date.getFullYear() === _today.getFullYear() &&
+                   date.getMonth()    === _today.getMonth()    &&
+                   date.getDate()     === _today.getDate();
+  if (_isToday) { showSamedayModal(); return; }
+
   state.selectedDate = date;
   state.selectedTime = null;
   document.getElementById('cal-next-btn').style.opacity = '0.4';
@@ -2486,6 +2509,16 @@ window.showPolicyModal = function() {
 };
 window.hidePolicyModal = function() {
   document.getElementById('policy-modal').classList.remove('show');
+};
+window.showSamedayModal = function() {
+  document.getElementById('sameday-modal').classList.add('show');
+};
+window.hideSamedayModal = function() {
+  document.getElementById('sameday-modal').classList.remove('show');
+};
+window.samedayWhatsApp = function() {
+  hideSamedayModal();
+  openWA('0504488463', 'היי מירית, רציתי לקבוע תור להיום 🤍');
 };
 
 // Returns to welcome screen and reloads the customer's appointments
