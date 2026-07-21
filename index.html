@@ -2104,7 +2104,7 @@ async function renderManualTimes() {
   const dateStr = `${date.getFullYear()}-${padNum(date.getMonth()+1)}-${padNum(date.getDate())}`;
 
   try {
-    const url = `${APPS_SCRIPT_URL}?date=${dateStr}&branch=${branch}&duration=${totalDuration}`;
+    const url = `${APPS_SCRIPT_URL}?date=${dateStr}&branch=${branch}&duration=${totalDuration}&admin=1`;
     const res  = await fetch(url);
     const data = await res.json();
 
@@ -2427,8 +2427,10 @@ async function loadTimeSlots(date) {
       return;
     }
     const toMin = t => { const [hh,mm] = String(t).split(':').map(Number); return hh*60 + mm; };
-    const openMin  = toMin(dayCfg?.start || '09:00');
-    const closeMin = toMin(dayCfg?.end   || (state.branch === 'modiin' ? '16:00' : '17:00'));
+    const openStr  = dayCfg?.start || '09:00';
+    const closeStr = dayCfg?.end   || (state.branch === 'modiin' ? '16:00' : '17:00');
+    const openMin  = toMin(openStr);
+    const closeMin = toMin(closeStr);
     const dur      = Number(state.totalDuration) || 0;
 
     // הפסקות קבועות (חוזרות שבועית) שמירית הגדירה ליום/סניף הזה
@@ -2438,8 +2440,9 @@ async function loadTimeSlots(date) {
       .map(b => ({ from: toMin(b.from), to: toMin(b.to) }));
 
     // טעינת סלוטים מ-Apps Script + חסימות מ-Firestore במקביל
+    // (שולחים open/close כדי ש-Apps Script יחתוך לשעות העבודה — הגנת שרת מפני קוד ישן)
     const [res, blockedSnap] = await Promise.all([
-      fetch(`${APPS_SCRIPT_URL}?date=${dateStr}&branch=${state.branch}&duration=${state.totalDuration}`),
+      fetch(`${APPS_SCRIPT_URL}?date=${dateStr}&branch=${state.branch}&duration=${state.totalDuration}&open=${encodeURIComponent(openStr)}&close=${encodeURIComponent(closeStr)}`),
       window._getDocs(window._col(window._db, 'blocked_slots'))
     ]);
     const data = await res.json();
@@ -3410,7 +3413,18 @@ async function renderEditTimes() {
     const branch = es.appt.branch;
     const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
     const excludeParam = es.appt.datetime ? `&excludeStart=${encodeURIComponent(es.appt.datetime.toDate().toISOString())}` : '';
-    const url = `${APPS_SCRIPT_URL}?date=${dateStr}&branch=${branch}&duration=${es.totalDuration}${excludeParam}`;
+
+    // שעות העבודה + הפסקות של מירית ליום/סניף הנבחר
+    await ensureAvailabilityLoaded();
+    const toMin = t => { const [hh,mm] = String(t).split(':').map(Number); return hh*60 + mm; };
+    const dayCfg = (state.availability[branch] || {})[date.getDay()];
+    const openStr  = dayCfg?.start || '09:00';
+    const closeStr = dayCfg?.end   || (branch === 'modiin' ? '16:00' : '17:00');
+    const editBreaks = (Array.isArray(dayCfg?.breaks) ? dayCfg.breaks : [])
+      .filter(b => b && b.from && b.to)
+      .map(b => ({ from: toMin(b.from), to: toMin(b.to) }));
+
+    const url = `${APPS_SCRIPT_URL}?date=${dateStr}&branch=${branch}&duration=${es.totalDuration}&open=${encodeURIComponent(openStr)}&close=${encodeURIComponent(closeStr)}${excludeParam}`;
     const res = await fetch(url);
     const data = await res.json();
 
@@ -3440,7 +3454,9 @@ async function renderEditTimes() {
       const slotStart = new Date(date); slotStart.setHours(h, m, 0, 0);
       const slotEnd = new Date(slotStart); slotEnd.setMinutes(slotEnd.getMinutes() + es.totalDuration);
       const isBlocked = blocked.some(b => slotStart < b.to && slotEnd > b.from);
-      const isTaken = s.taken || isPast || isBlocked;
+      const slotEndMin = slotMin + es.totalDuration;
+      const inBreak = editBreaks.some(iv => slotMin < iv.to && slotEndMin > iv.from);
+      const isTaken = s.taken || isPast || isBlocked || inBreak;
       const isSelected = es.selectedTime === s.time;
       return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken ? '' : `editSelectTime('${s.time}')`}">${s.time}</div>`;
     }).join('');
