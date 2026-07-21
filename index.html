@@ -2352,6 +2352,53 @@ async function ensureAvailabilityLoaded() {
   state._availLoaded = true;
 }
 
+// הגנה שנייה: בדיקה חוזרת של השעה שנבחרה רגע לפני הקביעה —
+// מגינה מפני מסך שהוצג מקוד ישן/קאש שמציג שעה מחוץ לשעות העבודה.
+async function validateSlotBookable(dt, branch, durationMin) {
+  await ensureAvailabilityLoaded();
+  const dow = dt.getDay();
+  const dayCfg = (state.availability[branch] || {})[dow];
+  const toMin = t => { const [h,m] = String(t).split(':').map(Number); return h*60 + m; };
+
+  if (dayCfg && dayCfg.open === false) {
+    return { ok:false, reason:'היום הזה סגור לתורים. אנא בחרי יום אחר.' };
+  }
+  const openMin  = toMin(dayCfg?.start || '09:00');
+  const closeMin = toMin(dayCfg?.end   || (branch === 'modiin' ? '16:00' : '17:00'));
+  const slotMin  = dt.getHours()*60 + dt.getMinutes();
+  const dur      = Number(durationMin) || 0;
+
+  if (slotMin < openMin || slotMin + dur > closeMin) {
+    return { ok:false, reason:'השעה שנבחרה מחוץ לשעות הפעילות. אנא בחרי שעה אחרת.' };
+  }
+
+  // הפסקות קבועות (חוזרות שבועית)
+  const breaks = Array.isArray(dayCfg?.breaks) ? dayCfg.breaks : [];
+  const hitsBreak = breaks.some(b => b && b.from && b.to &&
+    slotMin < toMin(b.to) && (slotMin + dur) > toMin(b.from));
+  if (hitsBreak) {
+    return { ok:false, reason:'השעה שנבחרה חסומה. אנא בחרי שעה אחרת.' };
+  }
+
+  // חסימות ספציפיות לתאריך (blocked_slots)
+  try {
+    const pad = n => String(n).padStart(2,'0');
+    const dateStr = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+    const snap = await window._getDocs(window._col(window._db,'blocked_slots'));
+    const slotEnd = new Date(dt); slotEnd.setMinutes(slotEnd.getMinutes() + dur);
+    let blocked = false;
+    snap.forEach(d => {
+      const b = d.data();
+      if (b.date === dateStr && b.from && b.to && dt < b.to.toDate() && slotEnd > b.from.toDate()) {
+        blocked = true;
+      }
+    });
+    if (blocked) return { ok:false, reason:'השעה שנבחרה חסומה. אנא בחרי שעה אחרת.' };
+  } catch(e) { /* אם הבדיקה נכשלה — לא חוסמים קביעה בגללה */ }
+
+  return { ok:true };
+}
+
 async function loadTimeSlots(date) {
   const section = document.getElementById('time-slots-section');
   const grid = document.getElementById('slots-grid');
@@ -2383,6 +2430,12 @@ async function loadTimeSlots(date) {
     const openMin  = toMin(dayCfg?.start || '09:00');
     const closeMin = toMin(dayCfg?.end   || (state.branch === 'modiin' ? '16:00' : '17:00'));
     const dur      = Number(state.totalDuration) || 0;
+
+    // הפסקות קבועות (חוזרות שבועית) שמירית הגדירה ליום/סניף הזה
+    const dayBreaks = Array.isArray(dayCfg?.breaks) ? dayCfg.breaks : [];
+    const breakIntervals = dayBreaks
+      .filter(b => b && b.from && b.to)
+      .map(b => ({ from: toMin(b.from), to: toMin(b.to) }));
 
     // טעינת סלוטים מ-Apps Script + חסימות מ-Firestore במקביל
     const [res, blockedSnap] = await Promise.all([
@@ -2426,7 +2479,11 @@ async function loadTimeSlots(date) {
       slotEnd.setMinutes(slotEnd.getMinutes() + state.totalDuration);
       const isBlocked = blocked.some(b => slotStart < b.to && slotEnd > b.from);
 
-      const isTaken   = s.taken || isPast || isBlocked;
+      // חסימת הפסקות קבועות (חוזרות שבועית) של מירית
+      const slotEndMin = slotMin + state.totalDuration;
+      const inBreak = breakIntervals.some(iv => slotMin < iv.to && slotEndMin > iv.from);
+
+      const isTaken   = s.taken || isPast || isBlocked || inBreak;
       const isSelected = state.selectedTime === s.time;
       return `<div class="slot${isTaken?' taken':''}${isSelected?' selected':''}" onclick="${isTaken?'':` selectTime('${s.time}')`}">${s.time}</div>`;
     }).join('');
@@ -2542,6 +2599,14 @@ window.submitBooking = async function() {
   const [h, m] = state.selectedTime.split(':').map(Number);
   const dt = new Date(state.selectedDate);
   dt.setHours(h, m, 0, 0);
+
+  // הגנה שנייה — בדיקה חוזרת שהשעה עדיין תקפה (שעות עבודה + הפסקות + חסימות)
+  const slotCheck = await validateSlotBookable(dt, state.branch, state.totalDuration);
+  if (!slotCheck.ok) {
+    showToast(slotCheck.reason);
+    if (state.selectedDate) loadTimeSlots(state.selectedDate); // רענון השעות הפנויות
+    return;
+  }
 
   const booking = {
     name,
@@ -3606,7 +3671,8 @@ function renderAvailDays() {
           <span style="color:var(--ink-mute);font-size:13px;flex-shrink:0">עד</span>
           <input type="time" value="${end}" step="1800" class="input" style="flex:1;padding:10px 12px;font-size:14px"
             onchange="updateAvailTime(${d},'end',this.value)">
-        </div>` : `
+        </div>
+        ${renderBreaksSection(d, dayData)}` : `
         <div class="day-hours off">${isWorkDay ? 'סגור ליום זה' : 'לא בסניף זה'}</div>`}
       </div>
     </div>`;
@@ -3622,6 +3688,64 @@ function renderAvailDays() {
   document.getElementById('avail-days-list').innerHTML = html + '<div style="height:40px"></div>';
   loadBlockedSlots();
 }
+
+// אזור ההפסקות הקבועות בתוך כרטיס יום עבודה (ממשק מירית בלבד)
+function renderBreaksSection(d, dayData) {
+  const breaks = Array.isArray(dayData?.breaks) ? dayData.breaks : [];
+  const dayLabel = DAY_NAMES[d];
+  let chips = '';
+  if (breaks.length) {
+    chips = breaks.map((b, i) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--rose-blush);border:1px solid var(--rose-gold-light);border-radius:12px;padding:8px 12px;margin-bottom:8px">
+        <div style="font-size:14px;color:var(--rose-gold-dark);font-weight:600">${b.from}–${b.to}</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:11px;color:var(--ink-mute)">כל ${dayLabel}</span>
+          <span onclick="deleteAvailBreak(${d},${i})" style="font-size:18px;color:var(--danger);cursor:pointer;line-height:1">×</span>
+        </div>
+      </div>`).join('');
+  }
+  return `
+    <div style="border-top:1px dashed var(--line);margin-top:14px;padding-top:12px">
+      <div style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-bottom:8px">🔒 הפסקות קבועות</div>
+      ${chips}
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="time" id="break-from-${d}" step="900" class="input" style="flex:1;padding:8px 10px;font-size:13px">
+        <span style="color:var(--ink-mute);font-size:12px;flex-shrink:0">עד</span>
+        <input type="time" id="break-to-${d}" step="900" class="input" style="flex:1;padding:8px 10px;font-size:13px">
+        <button onclick="addAvailBreak(${d})" style="background:var(--rose-gold);color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:13px;cursor:pointer;flex-shrink:0">הוסיפי</button>
+      </div>
+    </div>`;
+}
+
+window.addAvailBreak = async function(day) {
+  const branch = state.availBranch;
+  const from = document.getElementById(`break-from-${day}`)?.value;
+  const to   = document.getElementById(`break-to-${day}`)?.value;
+  if (!from || !to) { showToast('נא למלא שעת התחלה וסיום'); return; }
+  const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60 + m; };
+  if (toMin(to) <= toMin(from)) { showToast('שעת סיום חייבת להיות אחרי ההתחלה'); return; }
+
+  const cur = state.availability[branch][day] ||
+    { open:true, start:'09:00', end:(branch==='modiin'?'16:00':'17:00') };
+  if (!Array.isArray(cur.breaks)) cur.breaks = [];
+  cur.breaks.push({ from, to });
+  cur.breaks.sort((a,b) => toMin(a.from) - toMin(b.from));
+  state.availability[branch][day] = cur;
+
+  renderAvailDays();
+  await saveAvailability();
+  showToast('ההפסקה נוספה ✓');
+};
+
+window.deleteAvailBreak = async function(day, idx) {
+  const branch = state.availBranch;
+  const cur = state.availability[branch][day];
+  if (!cur || !Array.isArray(cur.breaks)) return;
+  cur.breaks.splice(idx, 1);
+  renderAvailDays();
+  await saveAvailability();
+  showToast('ההפסקה הוסרה ✓');
+};
 
 async function loadBlockedSlots() {
   const container = document.getElementById('blocked-slots-list');
@@ -3700,7 +3824,7 @@ window.toggleAvailDay = async function(day) {
   if (cur && cur.open) {
     state.availability[branch][day] = { ...cur, open: false };
   } else {
-    state.availability[branch][day] = { open: true, start: cur?.start || '09:00', end: cur?.end || (branch==='modiin'?'16:00':'17:00') };
+    state.availability[branch][day] = { open: true, start: cur?.start || '09:00', end: cur?.end || (branch==='modiin'?'16:00':'17:00'), breaks: cur?.breaks || [] };
   }
   renderAvailDays();
   await saveAvailability();
@@ -3708,7 +3832,7 @@ window.toggleAvailDay = async function(day) {
 
 window.updateAvailTime = async function(day, field, val) {
   const branch = state.availBranch;
-  if (!state.availability[branch][day]) state.availability[branch][day] = { open:true, start:'09:00', end:'17:00' };
+  if (!state.availability[branch][day]) state.availability[branch][day] = { open:true, start:'09:00', end:'17:00', breaks:[] };
   state.availability[branch][day][field] = val;
   await saveAvailability();
 };
