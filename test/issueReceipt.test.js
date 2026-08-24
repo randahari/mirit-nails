@@ -269,6 +269,57 @@ test('21. authenticated admin CANNOT write payment/receipt directly via client S
   }
 });
 
+// ---- G: retry — customer resolved once, no duplicate creation, same ApiIdentifier reused ----
+test('G. customer created on first attempt, receipt fails; retry resolves the SAME customer (no duplicate), succeeds with the same ApiIdentifier', async () => {
+  const id = nextId('appt'); await seedAppointment(id);
+  // First attempt: customer resolution succeeds (creates a mock customer
+  // for this ExtNumber), but the receipt call itself fails.
+  await expectHttpsError(
+    callAsAdmin({ appointmentId: id, amount: 220, method: 'cash', _mockCustomerScenario: 'new', _mockScenario: 'error' }),
+    'internal'
+  );
+  let data = await getApptDoc(id);
+  assert.equal(data.receipt.status, 'failed');
+  assert.equal(data.payment.amount, 220);
+  const apiIdBeforeRetry = data.receipt.apiIdentifier;
+
+  // Retry: same phone → same ExtNumber → the mock's per-ExtNumber cache
+  // returns the SAME customer (not a new one), and the receipt succeeds.
+  const retry = await callAsAdmin({ appointmentId: id, amount: 220, method: 'cash', _mockCustomerScenario: 'new', _mockScenario: 'success' });
+  assert.equal(retry.data.status, 'issued');
+  data = await getApptDoc(id);
+  assert.equal(data.receipt.status, 'issued');
+  assert.equal(data.receipt.apiIdentifier, apiIdBeforeRetry);
+  assert.equal(data.receipt.apiIdentifier, id);
+});
+
+// ---- H: simulates the real production failed appointment's exact state shape ----
+test('H. pre-existing failed appointment (payment recorded, receipt.status=failed, no documentId) retries safely through customer resolution + receipt issuance', async () => {
+  const id = nextId('appt');
+  await seedAppointment(id);
+  // Seed the EXACT shape the real production incident left behind: payment
+  // durably recorded, receipt failed, no document identifiers, a real
+  // lastError, apiIdentifier already equal to the appointment id.
+  await adminDb.collection('appointments').doc(id).update({
+    payment: { amount: 140, method: 'paybox', confirmedAt: admin.firestore.FieldValue.serverTimestamp(), confirmedByUid: 'simulated-uid' },
+    receipt: {
+      status: 'failed', provider: 'invoice4u', apiIdentifier: id,
+      documentId: null, documentNumber: null, documentType: null, pdfUrl: null,
+      requestedAt: admin.firestore.FieldValue.serverTimestamp(), issuedAt: null,
+      lastError: 'Invoice4U returned a business-level error', lastErrorAt: admin.firestore.FieldValue.serverTimestamp(),
+      attempts: 1,
+    },
+  });
+
+  const retry = await callAsAdmin({ appointmentId: id, amount: 140, method: 'paybox', _mockCustomerScenario: 'new', _mockScenario: 'success' });
+  assert.equal(retry.data.status, 'issued');
+  const data = await getApptDoc(id);
+  assert.equal(data.receipt.status, 'issued');
+  assert.equal(data.receipt.apiIdentifier, id, 'no reset / new ApiIdentifier required — the same one is reused');
+  assert.ok(data.receipt.documentId);
+  assert.ok(data.receipt.documentNumber);
+});
+
 // ---- 22-25: existing-flow regression sanity (full 20/20 coverage already in test/firestore.rules.test.js) ----
 test('22. customer booking regression: unauthenticated create still works (Rules unchanged)', async () => {
   const { getFirestore, connectFirestoreEmulator, doc, setDoc } = require('firebase/firestore');

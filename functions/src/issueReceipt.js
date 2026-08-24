@@ -14,9 +14,11 @@
 'use strict';
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { getFirestore } = require('firebase-admin/firestore');
 const { getInvoice4uConfig } = require('./config');
 const { beginReceiptAttempt, recordReceiptSuccess, recordReceiptFailure, ReceiptStateError } = require('./receiptState');
 const { createReceipt, invoice4uApiToken } = require('./invoice4uClient');
+const { resolveInvoice4uCustomer } = require('./invoice4uCustomer');
 
 // Server-side deployment configuration ONLY — never Firestore, never
 // client-supplied. Set via `functions/.env.*` at deploy time (B4+), not at
@@ -51,7 +53,7 @@ const issueReceipt = onCall({
     throw new HttpsError('permission-denied', 'admin authentication required');
   }
 
-  const { appointmentId, amount, method, customerName, itemDescription, _mockScenario } = request.data || {};
+  const { appointmentId, amount, method, itemDescription, _mockScenario, _mockCustomerScenario } = request.data || {};
   if (!appointmentId || typeof appointmentId !== 'string') {
     throw new HttpsError('invalid-argument', 'appointmentId is required');
   }
@@ -94,16 +96,39 @@ const issueReceipt = onCall({
     return { status: 'issued', documentNumber: attempt.receipt.documentNumber, pdfUrl: attempt.receipt.pdfUrl };
   }
 
-  // ---- 3. Call Invoice4U ----
+  // ---- 3. Resolve a verified Invoice4U customer, then call Invoice4U ----
   const config = await getInvoice4uConfig();
   const paymentType = config.paymentTypeMap[method];
 
   try {
+    // Server-side only — the customer's name/phone that end up on a real
+    // legal document must never come from client-supplied request data.
+    // Read fresh from the appointment itself (already locked by
+    // beginReceiptAttempt above, so this is safe/consistent).
+    const apptSnap = await getFirestore().collection('appointments').doc(appointmentId).get();
+    const apptData = apptSnap.data() || {};
+
+    // ---- 3a. Resolve/create the Invoice4U customer (ClientID) ----
+    // Required because DocumentType=2 (Receipt) rejects GeneralCustomer
+    // outright (Error 38, TypeOfDocumentDoesntAllowGeneralCustomer) — see
+    // invoice4uCustomer.js for the full resolve-or-create + race handling.
+    // If this throws, execution never reaches createReceipt() below —
+    // the catch block records a safe failure exactly as any other
+    // Invoice4U-side failure at this stage would.
+    const { clientId } = await resolveInvoice4uCustomer({
+      name: apptData.name,
+      phone: apptData.phone,
+      // TEST-ONLY: only has any effect when the server itself is running
+      // with INVOICE4U_MOCK_MODE=true (Functions Emulator). See
+      // invoice4uCustomerMock.js.
+      _mockCustomerScenario,
+    });
+
     const result = await createReceipt({
       environment: getInvoice4uEnvironment(),
       documentType: config.documentType,
       apiIdentifier: attempt.apiIdentifier,
-      customerName,
+      clientId,
       itemDescription,
       amount,
       paymentType,
@@ -124,20 +149,25 @@ const issueReceipt = onCall({
     return { status: 'issued', documentNumber: result.documentNumber, pdfUrl: result.pdfUrl };
   } catch (e) {
     // ---- 4b. Failure — payment fact from step 2 is untouched and safe ----
-    const isTimeout = e.code === 'TIMEOUT';
-    const lastError = e.code === 'NOT_CONFIGURED'
+    // Covers both customer-resolution failures (3a) and receipt-issuance
+    // failures — same guarantee either way: payment.* was already
+    // committed before this try block, so retry is always safe.
+    const isTimeout = e.code === 'TIMEOUT' || e.code === 'CUSTOMER_TIMEOUT';
+    const isNotConfigured = e.code === 'NOT_CONFIGURED' || e.code === 'CUSTOMER_NOT_CONFIGURED';
+    const lastError = isNotConfigured
       ? 'Invoice4U is not configured yet (missing API token)'
       : e.message;
     await recordReceiptFailure(appointmentId, lastError);
 
-    if (e.code === 'NOT_CONFIGURED') {
+    if (isNotConfigured) {
       throw new HttpsError('failed-precondition', 'Invoice4U integration is not configured yet');
     }
     if (isTimeout) {
       // Distinct from a confirmed failure: we don't know whether Invoice4U
-      // actually created the document. The client must present this
-      // differently ("unknown — safe to retry") from a definite error.
-      // Retrying is safe regardless — same ApiIdentifier either way.
+      // actually created the customer/document. The client must present
+      // this differently ("unknown — safe to retry") from a definite
+      // error. Retrying is safe regardless — same ApiIdentifier (and,
+      // deterministically, the same ExtNumber) either way.
       throw new HttpsError('deadline-exceeded', 'Invoice4U did not respond in time — result is unknown, retry is safe');
     }
     throw new HttpsError('internal', 'failed to issue receipt — payment was recorded, retry is safe');

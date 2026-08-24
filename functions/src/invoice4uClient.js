@@ -48,12 +48,91 @@ const HOSTS = {
 
 const REQUEST_TIMEOUT_MS = 20_000;
 
+// Fixed allowlist (not a blocklist) — deliberately so: only these exact
+// field names are ever pulled out of Invoice4U's response body. This can
+// never accidentally surface anything from the outgoing REQUEST (token,
+// headers, customer PII), because it never looks at the request at all —
+// only at fields Invoice4U's own response happens to contain.
+const DIAGNOSTIC_FIELD_ALLOWLIST = [
+  'Message', 'Error', 'Errors', 'ErrorCode', 'ErrorMessage',
+  'Code', 'Description', 'ExceptionMessage', 'ExceptionType',
+];
+
+function pickDiagnosticFields(obj) {
+  if (!obj || typeof obj !== 'object') return undefined;
+  const picked = {};
+  for (const key of DIAGNOSTIC_FIELD_ALLOWLIST) {
+    if (obj[key] !== undefined) picked[key] = obj[key];
+  }
+  return Object.keys(picked).length > 0 ? picked : undefined;
+}
+
+/**
+ * Best-effort, safe extraction of diagnostic info from a non-OK Invoice4U
+ * response. Never throws (diagnostics are a bonus, not a requirement), and
+ * never includes anything from the outgoing request. Bounded in size either
+ * way, so a large/unexpected body (e.g. an HTML error page from a proxy)
+ * can never inflate logs or Firestore writes unexpectedly.
+ */
+async function extractProviderDiagnostics(res) {
+  let rawText;
+  try {
+    rawText = await res.text();
+  } catch (e) {
+    return { readError: 'failed to read response body' };
+  }
+
+  const bodyExcerpt = rawText.slice(0, 1000);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch (e) {
+    return { bodyFormat: 'text', bodyExcerpt };
+  }
+
+  const nested = parsed && typeof parsed === 'object' ? parsed.CreateDocumentResult : undefined;
+  const fields = pickDiagnosticFields(parsed) ?? pickDiagnosticFields(nested);
+
+  return fields
+    ? { bodyFormat: 'json', fields }
+    : { bodyFormat: 'json', bodyExcerpt };
+}
+
+function summarizeDiagnostics(diagnostics) {
+  if (!diagnostics) return '';
+  if (diagnostics.fields) {
+    try {
+      return JSON.stringify(diagnostics.fields).slice(0, 400);
+    } catch (e) {
+      return '';
+    }
+  }
+  if (diagnostics.bodyExcerpt) return diagnostics.bodyExcerpt.slice(0, 400);
+  if (diagnostics.readError) return diagnostics.readError;
+  return '';
+}
+
+// Root cause of the first two real B4B failures (both HTTP 500), confirmed
+// via the diagnostic capture above: Invoice4U's backend is a .NET/WCF
+// service and rejects ISO 8601 DateTime values outright — the actual
+// server error was "DateTime content '...' does not start with '/Date('
+// and end with ')/' as required for JSON." It requires the legacy ASP.NET
+// AJAX JSON date format instead: /Date(<milliseconds-since-epoch>)/.
+// This is the ONLY DateTime-typed field in the request we send (see body
+// below) — everything else (strings/numbers) is unaffected by this bug.
+function toWcfJsonDate(date) {
+  return `/Date(${date.getTime()})/`;
+}
+
 /**
  * @param {{
  *   environment: 'qa'|'production',
  *   documentType: number,
  *   apiIdentifier: string,
- *   customerName: string,
+ *   clientId: number|string,  // verified Invoice4U ClientID — see invoice4uCustomer.js.
+ *                              // Never GeneralCustomer: DocumentType=2 (Receipt) rejects
+ *                              // it outright (Error 38, TypeOfDocumentDoesntAllowGeneralCustomer).
  *   itemDescription: string,
  *   amount: number,
  *   paymentType: number,
@@ -91,14 +170,18 @@ async function createReceipt(req) {
     throw err;
   }
 
+  // ClientID, not GeneralCustomer: confirmed via a real production Errors[]
+  // entry (ID 38, TypeOfDocumentDoesntAllowGeneralCustomer) that Receipt
+  // (DocumentType=2) rejects one-off customers outright — see
+  // invoice4uCustomer.js for how clientId is resolved/verified beforehand.
   const body = {
     token,
     doc: {
       DocumentType: req.documentType,
       ApiIdentifier: req.apiIdentifier,
-      GeneralCustomer: { Name: req.customerName },
+      ClientID: req.clientId,
       Items: [{ Name: req.itemDescription, Quantity: 1, Price: req.amount }],
-      Payments: [{ PaymentType: req.paymentType, Amount: req.amount, Date: new Date().toISOString() }],
+      Payments: [{ PaymentType: req.paymentType, Amount: req.amount, Date: toWcfJsonDate(new Date()) }],
       Currency: 'ILS',
     },
   };
@@ -131,23 +214,111 @@ async function createReceipt(req) {
   }
 
   if (!res.ok) {
-    const err = new Error(`Invoice4U HTTP ${res.status}`);
+    // Diagnostic-only addition (2026-08-24, after the first real B4B
+    // failure returned HTTP 500 with no captured body): read and safely
+    // summarize Invoice4U's own response so a repeat failure is
+    // debuggable. See extractProviderDiagnostics() — allowlist-based, never
+    // touches the outgoing request, always bounded in size.
+    const diagnostics = await extractProviderDiagnostics(res);
+    const summary = summarizeDiagnostics(diagnostics);
+    const err = new Error(`Invoice4U HTTP ${res.status}${summary ? `: ${summary}` : ''}`);
     err.code = 'HTTP_ERROR';
+    err.providerDiagnostics = diagnostics;
+    console.error('[invoice4uClient] Invoice4U returned a non-OK HTTP status', {
+      httpStatus: res.status,
+      apiIdentifier: req.apiIdentifier,
+      diagnostics,
+    });
     throw err;
   }
 
   const json = await res.json();
-  const result = json?.CreateDocumentResult ?? json;
-  const errors = result?.Errors ?? [];
+
+  // Root cause of the fourth real B4B failure (2026-08-24): this endpoint
+  // (CreateDocumentWithIdentifierValidation) wraps its response in
+  // "CreateDocumentWithIdentifierValidationResult" — an endpoint-specific
+  // name, confirmed against Invoice4U's official docs — NOT the generic
+  // "CreateDocumentResult" (that name belongs to the plain /CreateDocument
+  // endpoint). The old code's blind `json?.CreateDocumentResult ?? json`
+  // fallback silently read fields off the wrong (top-level) object on
+  // every real call to this endpoint — Errors was always [] regardless of
+  // what Invoice4U actually sent, and ID/DocumentNumber were always
+  // undefined, which crashed recordReceiptSuccess() downstream.
+  //
+  // Root cause of the fifth AND sixth real B4B failures (2026-08-24),
+  // found via the diagnostics above once they finally had a real response
+  // to look at: Invoice4U wraps its response in a top-level "d" envelope —
+  // the classic ASP.NET AJAX/WCF anti-hijacking JSON convention (confirmed
+  // empirically: the real response's only top-level key was "d"). The
+  // fifth-failure fix correctly unwrapped "d" but then assumed a FURTHER
+  // nested "CreateDocumentWithIdentifierValidationResult" wrapper inside
+  // it — the sixth failure's diagnostic proved that assumption wrong: the
+  // logged `receivedKeysInD` was the ENTIRE Document object's field set
+  // (ID, DocumentNumber, Errors, GeneralCustomer, Items, Payments,
+  // PrintOriginalPDFLink, IsSuccess, ~100+ more), meaning "d" directly IS
+  // the result — the ASP.NET AJAX "d" envelope REPLACES the WCF-style
+  // "{MethodName}Result" naming, it doesn't additionally contain it. Only
+  // one level of unwrapping is real; no blind fallback either way —
+  // anything else is treated as an integration/protocol error, never a
+  // silent "success".
+  const result = json?.d;
+
+  if (!result || typeof result !== 'object') {
+    console.error('[invoice4uClient] Invoice4U response missing expected "d" envelope', {
+      apiIdentifier: req.apiIdentifier,
+      receivedTopLevelKeys: json && typeof json === 'object' ? Object.keys(json) : typeof json,
+    });
+    const err = new Error('Invoice4U response missing expected "d" envelope');
+    err.code = 'INVALID_RESPONSE_SHAPE';
+    throw err;
+  }
+
+  const errors = Array.isArray(result.Errors) ? result.Errors : [];
 
   // Error 134 = DocumentAlreadyCreated. Per Invoice4U's own docs this is the
   // idempotent-duplicate signal, not a real failure — treat exactly like
-  // success and return the existing document's identifiers.
+  // success and return the existing document's identifiers. Now correctly
+  // operates on Errors[] from the right nesting level (see above).
   const isRealError = errors.some((e) => e.ID !== 134);
   if (isRealError) {
     const err = new Error(errors.map((e) => e.Error).join('; ') || 'Invoice4U returned an error');
     err.code = 'INVOICE4U_ERROR';
     err.invoice4uErrors = errors;
+    // Diagnostic-only addition (2026-08-24): after the date-format fix
+    // resolved the earlier HTTP 500 (WCF deserialization crash), Invoice4U
+    // now returns HTTP 200 with a business-level Errors[] instead — a
+    // branch that was never logged. Same allowlist-based safety pattern as
+    // the HTTP_ERROR diagnostics above: only these four fields are ever
+    // read out of Invoice4U's own error objects, nothing from the outgoing
+    // request (token/headers/full payload) is touched. No change to
+    // error/return handling below — this is purely an added log line.
+    console.error('[invoice4uClient] Invoice4U returned a business-level error', {
+      apiIdentifier: req.apiIdentifier,
+      errors: errors.map((e) => ({
+        ID: e.ID,
+        Error: e.Error,
+        Message: e.Message,
+        Description: e.Description,
+      })),
+    });
+    throw err;
+  }
+
+  // Guard against ever returning an incomplete "success" — a response
+  // shaped correctly (right wrapper, no real Errors) but somehow missing
+  // ID/DocumentNumber must never reach recordReceiptSuccess() with
+  // undefined fields (that guarantee is what this whole fix is for).
+  // Applies equally to the error-134 idempotent-duplicate case, which per
+  // Invoice4U's docs still includes ID/DocumentNumber for the existing
+  // document.
+  if (result.ID == null || result.DocumentNumber == null) {
+    console.error('[invoice4uClient] Invoice4U success response missing ID/DocumentNumber', {
+      apiIdentifier: req.apiIdentifier,
+      hasId: result.ID != null,
+      hasDocumentNumber: result.DocumentNumber != null,
+    });
+    const err = new Error('Invoice4U response reported no errors but is missing ID/DocumentNumber');
+    err.code = 'INVALID_RESPONSE_SHAPE';
     throw err;
   }
 
