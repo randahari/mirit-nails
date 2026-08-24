@@ -3124,18 +3124,51 @@ async function performIssueReceipt(apptId, amount, method, appt) {
   } catch (e) {
     console.error(e);
     const code = e.code || '';
+    const msg = e.message || '';
+    // Every branch below is driven by what the server actually did, per its
+    // error code+message — never assumed. "התשלום נקלט" is shown ONLY for
+    // the specific failures that happen AFTER beginReceiptAttempt has
+    // already committed payment.* (timeout, and a definite Invoice4U
+    // failure) — every failure that happens before that point (validation,
+    // the B4A issuance gate, the appointment lock itself failing, "already
+    // in progress" from a concurrent click) says plainly that nothing
+    // changed, because nothing did.
     if (code.includes('deadline-exceeded')) {
+      // Only reachable after beginReceiptAttempt succeeded — payment.* IS recorded.
       showReceiptMessage({
         icon: '❓',
         title: 'לא ידוע אם הקבלה הופקה',
         sub: 'התשלום נקלט. Invoice4U לא הגיבה בזמן — ניתן לנסות שוב בבטחה, המערכת תזהה כפילות אוטומטית.',
         showRetry: true,
       });
-    } else if (code.includes('failed-precondition') && (e.message || '').includes('already being issued')) {
+    } else if (code.includes('failed-precondition') && msg.includes('already being issued')) {
+      // Nothing changed from THIS click — a concurrent attempt is mid-flight.
       showReceiptMessage({ icon: '⏳', title: 'כבר בתהליך הפקה', sub: 'נסי שוב בעוד רגע.', showClose: true });
+    } else if (code.includes('failed-precondition') && msg.includes('not yet enabled')) {
+      // The B4A readiness gate — strictly before beginReceiptAttempt. No write happened.
+      showReceiptMessage({ icon: '⚠️', title: 'הקבלה לא הופקה', sub: 'לא בוצע שינוי בתור. ניתן לנסות שוב.', showRetry: true });
+    } else if (code.includes('failed-precondition') && msg.includes('not configured')) {
+      // Invoice4U itself unconfigured — but beginReceiptAttempt DID succeed first, so payment.* IS recorded.
+      showReceiptMessage({
+        icon: '⚠️',
+        title: 'הפקת הקבלה נכשלה',
+        sub: 'התשלום נקלט. האינטגרציה עם Invoice4U אינה מוגדרת עדיין — יש לפנות לתמיכה. ניתן לנסות שוב מאוחר יותר.',
+        showRetry: true,
+      });
+    } else if (code.includes('not-found')) {
+      // Appointment lookup itself failed — before any write.
+      showReceiptMessage({ icon: '⚠️', title: 'התור לא נמצא', sub: 'לא בוצע שינוי. רעננו את המסך ונסו שוב.', showClose: true });
     } else if (code.includes('permission-denied')) {
-      showReceiptMessage({ icon: '🔒', title: 'אין הרשאה', sub: 'נסי להתחבר מחדש.', showClose: true });
+      showReceiptMessage({ icon: '🔒', title: 'אין הרשאה', sub: 'לא בוצע שינוי בתור. נסי להתחבר מחדש.', showClose: true });
+    } else if (code.includes('invalid-argument')) {
+      // Validation itself failed — before any write.
+      showReceiptMessage({ icon: '⚠️', title: 'פרטים לא תקינים', sub: 'לא בוצע שינוי בתור. בדקי את הסכום ואמצעי התשלום.', showClose: true });
+    } else if (code.includes('internal') && msg.includes('failed to lock')) {
+      // beginReceiptAttempt's own transaction failed to commit — no write happened.
+      showReceiptMessage({ icon: '⚠️', title: 'הקבלה לא הופקה', sub: 'לא בוצע שינוי בתור. ניתן לנסות שוב.', showRetry: true });
     } else {
+      // Remaining 'internal' case: a definite Invoice4U failure AFTER
+      // beginReceiptAttempt succeeded — payment.* IS recorded.
       showReceiptMessage({
         icon: '⚠️',
         title: 'הפקת הקבלה נכשלה',
