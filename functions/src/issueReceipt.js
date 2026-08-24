@@ -26,6 +26,18 @@ function getInvoice4uEnvironment() {
   return process.env.INVOICE4U_ENVIRONMENT === 'production' ? 'production' : 'qa';
 }
 
+// B4A readiness gate — deploy-time only, never Firestore, never
+// client-reachable, no code path bypasses it. Defaults CLOSED: unless a
+// deploy explicitly sets RECEIPT_ISSUANCE_ENABLED=true, this throws before
+// beginReceiptAttempt is ever called — so even a fully authorized, fully
+// valid request cannot reach Invoice4U, and no payment/receipt field on
+// any real appointment is touched. B4A deploys with this unset (closed);
+// flipping it to 'true' and redeploying is the explicit, separate B4B
+// action, approved on its own.
+function isReceiptIssuanceEnabled() {
+  return process.env.RECEIPT_ISSUANCE_ENABLED === 'true';
+}
+
 const issueReceipt = onCall({
   secrets: [invoice4uApiToken],
   // Cheap insurance, not a real bottleneck at this business's volume: caps
@@ -47,6 +59,15 @@ const issueReceipt = onCall({
   }
   if (!['cash', 'bit', 'paybox'].includes(method)) {
     throw new HttpsError('invalid-argument', "method must be 'cash' | 'bit' | 'paybox'");
+  }
+
+  // ---- 1.5. B4A readiness gate — see isReceiptIssuanceEnabled() above.
+  // Deliberately AFTER auth+validation (so those are still verifiable
+  // against the real deployed function) and BEFORE beginReceiptAttempt (so
+  // no Firestore field on any real appointment is touched, and Invoice4U
+  // is never reached) regardless of how correct/authorized the request is.
+  if (!isReceiptIssuanceEnabled()) {
+    throw new HttpsError('failed-precondition', 'receipt issuance is not yet enabled in this environment');
   }
 
   // ---- 2. Lock + durably record payment, before touching Invoice4U ----
