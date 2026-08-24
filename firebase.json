@@ -4,11 +4,17 @@
     "ignore": [
       "firebase.json",
       "firestore.rules",
+      ".firebaserc",
+      ".gitignore",
+      ".git/**",
       "**/.*",
+      "node_modules/**",
       "**/node_modules/**",
       "functions/**",
       "scripts/**",
-      "test/**"
+      "test/**",
+      "package.json",
+      "package-lock.json"
     ]
   },
   "firestore": {

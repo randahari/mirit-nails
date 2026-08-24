@@ -1478,6 +1478,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
       <input class="input" type="password" id="admin-password" placeholder="הזיני סיסמה" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
     </div>
     <button class="btn btn-primary" onclick="checkAdminLogin()">כניסה</button>
+    <div style="text-align:center;margin-top:14px;font-size:12.5px;color:var(--ink-mute);cursor:pointer" onclick="sendAdminPasswordReset()">שכחתי סיסמה</div>
     <button class="btn btn-ghost" style="margin-top:10px;padding:14px;font-size:13px" onclick="closeAdminModal()">ביטול</button>
   </div>
 </div>
@@ -1486,7 +1487,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, Timestamp, doc, getDoc, setDoc, updateDoc, deleteDoc, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnR4HJNhnheWBalVtTd9em6wVl5vrSuJU",
@@ -1533,6 +1534,7 @@ window._auth = auth;
 window._signIn = signInWithEmailAndPassword;
 window._signOut = signOut;
 window._onAuthStateChanged = onAuthStateChanged;
+window._sendPasswordReset = sendPasswordResetEmail;
 
 window._fbReady = true;
 document.dispatchEvent(new Event('fbReady'));
@@ -3914,6 +3916,18 @@ window.checkAdminLogin = async function() {
   } finally {
     if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'all'; }
   }
+};
+
+window.sendAdminPasswordReset = async function() {
+  const email = document.getElementById('admin-email').value.trim();
+  if (!email) { showToast('נא להזין קודם את האימייל'); return; }
+  try {
+    await window._sendPasswordReset(window._auth, email);
+  } catch (e) {
+    // Intentionally the same message on success and failure (e.g. unknown
+    // email) — avoids revealing which email addresses have admin accounts.
+  }
+  showToast('אם קיים חשבון עם האימייל הזה, נשלח אליו קישור לבחירת סיסמה');
 };
 
 function enterMiritMode() {
