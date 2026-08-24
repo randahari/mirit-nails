@@ -420,6 +420,41 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 }
 .service-card.active .check-circle{background:var(--rose-gold);border-color:var(--rose-gold)}
 
+/* ===== Receipt / Payment modal — reuses service-card/check-circle/btn/input language ===== */
+.receipt-summary{
+  background:rgba(201,164,122,0.08);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;margin-bottom:20px;
+}
+.receipt-summary .rs-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;color:var(--ink)}
+.receipt-summary .rs-service{font-size:13px;color:var(--ink-soft);margin-top:2px}
+.pay-options{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.pay-option{
+  background:var(--white);border:1.5px solid var(--line);border-radius:16px;
+  padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;
+  cursor:pointer;transition:all .2s;
+}
+.pay-option.active{
+  border-color:var(--rose-gold);
+  background:linear-gradient(135deg,#fff 0%,#fdf6f0 100%);
+  box-shadow:0 0 0 3px rgba(201,164,122,0.12);
+}
+.pay-option:active{transform:scale(.97)}
+.pay-option .check-circle{width:20px;height:20px}
+.pay-option-label{font-size:13.5px;font-weight:600;color:var(--ink)}
+.receipt-modal-msg{
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:20px 8px;
+}
+.receipt-modal-msg .rm-icon{font-size:40px;line-height:1}
+.receipt-modal-msg .rm-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;color:var(--ink)}
+.receipt-modal-msg .rm-sub{font-size:13px;color:var(--ink-soft)}
+.receipt-status-badge{
+  display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;
+  border-radius:999px;padding:3px 9px;margin-top:6px;letter-spacing:0.02em;
+}
+.receipt-status-badge.issued{background:rgba(122,155,110,0.15);color:var(--success)}
+.receipt-status-badge.pending{background:rgba(201,164,122,0.15);color:var(--rose-gold-dark)}
+.receipt-status-badge.failed{background:rgba(196,122,122,0.15);color:var(--danger);cursor:pointer}
+
 /* ===== SCREEN: CALENDAR ===== */
 .month-nav{display:flex;align-items:center;justify-content:space-between;padding:0 24px 16px}
 .month-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500}
@@ -1462,6 +1497,61 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   </div>
 </div>
 
+<!-- Receipt / payment modal -->
+<div class="modal-overlay" id="receipt-modal" style="align-items:flex-end;padding:0">
+  <div style="background:var(--cream);border-radius:28px 28px 0 0;padding:28px 24px max(32px,env(safe-area-inset-bottom));width:100%;max-width:480px;margin:0 auto;max-height:92vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500">💅 סיום טיפול וקבלה</div>
+      <div onclick="closeReceiptModal()" style="width:32px;height:32px;border-radius:50%;background:var(--rose-blush);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);font-size:18px">×</div>
+    </div>
+
+    <!-- Form state -->
+    <div id="receipt-form">
+      <div class="receipt-summary">
+        <div class="rs-name" id="receipt-client-name"></div>
+        <div class="rs-service" id="receipt-service"></div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div class="input-label">סכום שהתקבל</div>
+        <input class="input" type="number" inputmode="decimal" min="0" step="1" id="receipt-amount" placeholder="0" style="font-size:20px;text-align:center;font-weight:600">
+      </div>
+
+      <div style="margin-bottom:24px">
+        <div class="input-label">אמצעי תשלום</div>
+        <div class="pay-options">
+          <div class="pay-option" data-method="bit" onclick="selectPayMethod('bit')">
+            <div class="check-circle"></div>
+            <div class="pay-option-label">Bit</div>
+          </div>
+          <div class="pay-option" data-method="paybox" onclick="selectPayMethod('paybox')">
+            <div class="check-circle"></div>
+            <div class="pay-option-label">PayBox</div>
+          </div>
+          <div class="pay-option" data-method="cash" onclick="selectPayMethod('cash')">
+            <div class="check-circle"></div>
+            <div class="pay-option-label">מזומן</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="receipt-error" style="display:none;background:rgba(196,122,122,0.1);border:1px solid rgba(196,122,122,0.3);border-radius:14px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--danger);text-align:center"></div>
+
+      <button class="btn btn-primary" id="receipt-submit-btn" onclick="submitReceipt()" style="opacity:0.4;pointer-events:none">הפקת קבלה</button>
+      <button class="btn btn-ghost" onclick="closeReceiptModal()" style="margin-top:10px;padding:14px;font-size:14px">ביטול</button>
+    </div>
+
+    <!-- Processing / success / error message state (replaces the form while active) -->
+    <div id="receipt-message" class="receipt-modal-msg" style="display:none">
+      <div class="rm-icon" id="receipt-msg-icon">⏳</div>
+      <div class="rm-title" id="receipt-msg-title"></div>
+      <div class="rm-sub" id="receipt-msg-sub"></div>
+      <button class="btn btn-primary" id="receipt-retry-btn" onclick="retryReceipt()" style="display:none;margin-top:8px">נסי שוב</button>
+      <button class="btn btn-ghost" id="receipt-msg-close-btn" onclick="closeReceiptModal()" style="display:none;padding:14px;font-size:14px">סגירה</button>
+    </div>
+  </div>
+</div>
+
 <!-- Admin login modal -->
 <div id="admin-modal" style="display:none;position:fixed;inset:0;background:rgba(61,47,36,0.6);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px">
   <div style="background:var(--cream);border-radius:28px;padding:32px 28px;width:100%;max-width:380px;box-shadow:var(--shadow-lg)">
@@ -1488,6 +1578,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, Timestamp, doc, getDoc, setDoc, updateDoc, deleteDoc, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnR4HJNhnheWBalVtTd9em6wVl5vrSuJU",
@@ -1501,17 +1592,20 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const functionsClient = getFunctions(app, 'europe-west1');
 
 // ===== Local development only =====
 // Points at the Firebase Emulator Suite when this page is served from
 // localhost (e.g. via `firebase emulators:start`). Has zero effect in
 // production — the real site is never served from localhost, so this
-// branch never runs there. Lets the Firebase Authentication migration and
-// Firestore Rules be verified end-to-end without touching production data
-// or requiring the Blaze plan.
+// branch never runs there. Lets the Firebase Authentication migration,
+// Firestore Rules, and the receipt Cloud Function be verified end-to-end
+// without touching production data, real Invoice4U credentials, or
+// requiring the Blaze plan.
 if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
   connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  connectFunctionsEmulator(functionsClient, '127.0.0.1', 5001);
 }
 
 // ===== Expose db and Firestore functions to global scope =====
@@ -1535,6 +1629,9 @@ window._signIn = signInWithEmailAndPassword;
 window._signOut = signOut;
 window._onAuthStateChanged = onAuthStateChanged;
 window._sendPasswordReset = sendPasswordResetEmail;
+
+// ===== Expose Functions callable (same convention as db/auth above) =====
+window._issueReceipt = httpsCallable(functionsClient, 'issueReceipt');
 
 window._fbReady = true;
 document.dispatchEvent(new Event('fbReady'));
@@ -2884,6 +2981,173 @@ async function loadMiritDashboard() {
   }
 }
 
+// ===== RECEIPT / PAYMENT (Invoice4U) =====
+// Firestore's `receipt`/`payment` fields on the appointment are the source
+// of truth for this UI — never a DOM flag or localStorage. Shared by all
+// three appointment-card render functions below, so the "already issued /
+// in progress / failed" treatment stays consistent everywhere.
+const PAY_METHOD_LABELS = { bit: 'Bit', paybox: 'PayBox', cash: 'מזומן' };
+
+function receiptActionMarkup(a) {
+  const r = a.receipt;
+  if (r && r.status === 'issued') {
+    const amt = a.payment && typeof a.payment.amount === 'number' ? a.payment.amount : null;
+    const methodLabel = a.payment ? PAY_METHOD_LABELS[a.payment.method] || a.payment.method : '';
+    return `<div class="receipt-status-badge issued">✓ קבלה הופקה${amt !== null ? ' · ' + amt + ' ₪' : ''}${methodLabel ? ' · ' + methodLabel : ''}</div>`;
+  }
+  if (r && r.status === 'pending') {
+    return `<div class="receipt-status-badge pending">⏳ מפיקה קבלה...</div>`;
+  }
+  if (r && r.status === 'failed') {
+    return `<div class="receipt-status-badge failed" onclick="event.stopPropagation();openReceiptModal('${a.id}')">⚠ נסי שוב</div>`;
+  }
+  return `<div class="icon-btn" style="border-color:var(--rose-gold);color:var(--rose-gold-dark)" onclick="openReceiptModal('${a.id}')" title="סיום טיפול וקבלה">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+  </div>`;
+}
+
+window._receiptModalAppt = null; // full appointment doc currently open in the modal, incl. its Firestore id as .id
+
+window.openReceiptModal = async function(apptId) {
+  try {
+    const snap = await window._getDoc(window._doc(window._db, 'appointments', apptId));
+    if (!snap.exists()) { showToast('התור לא נמצא'); return; }
+    const appt = { id: apptId, ...snap.data() };
+    window._receiptModalAppt = appt;
+
+    document.getElementById('receipt-client-name').textContent = appt.name || '';
+    document.getElementById('receipt-service').textContent = appt.services || '';
+
+    // Retry pre-fills with what was entered before — a plain retry resubmits
+    // the same values by default; correcting them is a deliberate action.
+    document.getElementById('receipt-amount').value = appt.payment && appt.payment.amount ? appt.payment.amount : '';
+    document.querySelectorAll('#receipt-modal .pay-option').forEach(el => el.classList.remove('active'));
+    if (appt.payment && appt.payment.method) {
+      const preselect = document.querySelector(`#receipt-modal .pay-option[data-method="${appt.payment.method}"]`);
+      if (preselect) preselect.classList.add('active');
+    }
+
+    document.getElementById('receipt-error').style.display = 'none';
+    document.getElementById('receipt-form').style.display = 'block';
+    document.getElementById('receipt-message').style.display = 'none';
+    checkReceiptForm();
+    document.getElementById('receipt-modal').classList.add('show');
+  } catch (e) {
+    console.error(e);
+    showToast('שגיאה בטעינת התור');
+  }
+};
+
+window.closeReceiptModal = function() {
+  document.getElementById('receipt-modal').classList.remove('show');
+  window._receiptModalAppt = null;
+};
+
+window.selectPayMethod = function(method) {
+  document.querySelectorAll('#receipt-modal .pay-option').forEach(el => el.classList.toggle('active', el.dataset.method === method));
+  checkReceiptForm();
+};
+
+function getSelectedPayMethod() {
+  const el = document.querySelector('#receipt-modal .pay-option.active');
+  return el ? el.dataset.method : null;
+}
+
+function checkReceiptForm() {
+  const amount = parseFloat(document.getElementById('receipt-amount').value);
+  const ok = amount > 0 && !!getSelectedPayMethod();
+  const btn = document.getElementById('receipt-submit-btn');
+  btn.style.opacity = ok ? '1' : '0.4';
+  btn.style.pointerEvents = ok ? 'all' : 'none';
+}
+document.addEventListener('input', (e) => { if (e.target && e.target.id === 'receipt-amount') checkReceiptForm(); });
+
+function showReceiptMessage({ icon, title, sub, showRetry, showClose }) {
+  document.getElementById('receipt-form').style.display = 'none';
+  const msg = document.getElementById('receipt-message');
+  msg.style.display = 'flex';
+  document.getElementById('receipt-msg-icon').textContent = icon;
+  document.getElementById('receipt-msg-title').textContent = title;
+  document.getElementById('receipt-msg-sub').textContent = sub || '';
+  document.getElementById('receipt-retry-btn').style.display = showRetry ? 'block' : 'none';
+  document.getElementById('receipt-msg-close-btn').style.display = showClose ? 'block' : 'none';
+}
+
+window.submitReceipt = async function() {
+  const amount = parseFloat(document.getElementById('receipt-amount').value);
+  const method = getSelectedPayMethod();
+  const appt = window._receiptModalAppt;
+  if (!appt || !(amount > 0) || !method) return;
+  await performIssueReceipt(appt.id, amount, method, appt);
+};
+
+window.retryReceipt = async function() {
+  const appt = window._receiptModalAppt;
+  if (!appt || !appt.payment) return;
+  // Plain retry — same amount/method that were locked in on the first
+  // attempt. Idempotent server-side regardless (same ApiIdentifier).
+  await performIssueReceipt(appt.id, appt.payment.amount, appt.payment.method, appt);
+};
+
+async function performIssueReceipt(apptId, amount, method, appt) {
+  // Client-side lock is UX only — the real duplicate-submission guard is
+  // server-side (receiptState.js transaction). This just prevents an
+  // impatient double-click from firing two independent requests.
+  const submitBtn = document.getElementById('receipt-submit-btn');
+  const retryBtn = document.getElementById('receipt-retry-btn');
+  [submitBtn, retryBtn].forEach(b => { if (b) { b.style.pointerEvents = 'none'; b.style.opacity = '0.5'; } });
+
+  showReceiptMessage({ icon: '⏳', title: 'מפיקה קבלה...', sub: 'רק רגע' });
+
+  try {
+    const result = await window._issueReceipt({
+      appointmentId: apptId,
+      amount,
+      method,
+      customerName: appt.name,
+      itemDescription: appt.services,
+    });
+    showReceiptMessage({
+      icon: '✓',
+      title: 'הקבלה הופקה בהצלחה',
+      sub: `${amount} ₪ · ${PAY_METHOD_LABELS[method] || method}`,
+      showClose: true,
+    });
+    showToast('✓ התשלום נקלט · ✓ הקבלה הופקה בהצלחה');
+    setTimeout(() => {
+      closeReceiptModal();
+      // Re-render whichever list is currently on screen so the card
+      // reflects the new receipt state — reads fresh from Firestore.
+      if (typeof loadMiritAppts === 'function' && document.getElementById('screen-mirit-appts')?.classList.contains('active')) loadMiritAppts();
+      if (typeof loadMiritDashboard === 'function' && document.getElementById('screen-mirit')?.classList.contains('active')) loadMiritDashboard();
+    }, 1400);
+  } catch (e) {
+    console.error(e);
+    const code = e.code || '';
+    if (code.includes('deadline-exceeded')) {
+      showReceiptMessage({
+        icon: '❓',
+        title: 'לא ידוע אם הקבלה הופקה',
+        sub: 'התשלום נקלט. Invoice4U לא הגיבה בזמן — ניתן לנסות שוב בבטחה, המערכת תזהה כפילות אוטומטית.',
+        showRetry: true,
+      });
+    } else if (code.includes('failed-precondition') && (e.message || '').includes('already being issued')) {
+      showReceiptMessage({ icon: '⏳', title: 'כבר בתהליך הפקה', sub: 'נסי שוב בעוד רגע.', showClose: true });
+    } else if (code.includes('permission-denied')) {
+      showReceiptMessage({ icon: '🔒', title: 'אין הרשאה', sub: 'נסי להתחבר מחדש.', showClose: true });
+    } else {
+      showReceiptMessage({
+        icon: '⚠️',
+        title: 'הפקת הקבלה נכשלה',
+        sub: 'התשלום נקלט. ניתן לנסות שוב בבטחה.',
+        showRetry: true,
+      });
+    }
+  } finally {
+    [submitBtn, retryBtn].forEach(b => { if (b) { b.style.pointerEvents = 'all'; b.style.opacity = '1'; } });
+  }
+}
+
 // Renders a flat appointment list into a container
 function renderApptList(containerId, appts, opts = {}) {
   const list = document.getElementById(containerId);
@@ -2917,6 +3181,7 @@ function renderApptList(containerId, appts, opts = {}) {
         <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </div>
+        ${receiptActionMarkup(a)}
       </div>
     </div>`;
   }).join('');
@@ -2980,6 +3245,7 @@ function renderWeekGrouped(containerId, appts, startDate) {
               <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </div>
+              ${receiptActionMarkup(a)}
             </div>
           </div>`;
         }).join('')}
@@ -3239,6 +3505,7 @@ async function loadMiritAppts() {
           <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </div>
+          ${receiptActionMarkup(a)}
         </div>
       </div>`;
     }).join('');
