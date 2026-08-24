@@ -13,6 +13,7 @@
 'use strict';
 
 const { defineSecret } = require('firebase-functions/params');
+const { mockCreateReceipt } = require('./invoice4uMock');
 
 const invoice4uApiToken = defineSecret('INVOICE4U_API_TOKEN');
 
@@ -20,6 +21,8 @@ const HOSTS = {
   qa: 'https://apiqa.invoice4u.co.il/Services/ApiService.svc',
   production: 'https://api.invoice4u.co.il/Services/ApiService.svc',
 };
+
+const REQUEST_TIMEOUT_MS = 20_000;
 
 /**
  * @param {{
@@ -30,9 +33,18 @@ const HOSTS = {
  *   itemDescription: string,
  *   amount: number,
  *   paymentType: number,
+ *   _mockScenario?: string,  // TEST-ONLY — see invoice4uMock.js header
  * }} req
  */
 async function createReceipt(req) {
+  // TEST-ONLY branch. Gated on a server env var that only ever exists in
+  // the Functions Emulator (see B3 test harness) — never set in any real
+  // deployment, so this can never activate in production regardless of
+  // anything a client sends.
+  if (process.env.INVOICE4U_MOCK_MODE === 'true') {
+    return mockCreateReceipt(req);
+  }
+
   const token = invoice4uApiToken.value();
   if (!token) {
     // Expected and normal until the manual "attach Invoice4U QA credentials"
@@ -61,11 +73,32 @@ async function createReceipt(req) {
     },
   };
 
-  const res = await fetch(`${host}/CreateDocumentWithIdentifierValidation`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch(`${host}/CreateDocumentWithIdentifierValidation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      // We genuinely don't know whether Invoice4U processed the request —
+      // it may have created a document we never heard back about. This is
+      // NOT the same as a confirmed failure; see receiptState.js / the
+      // ambiguous-result handling in issueReceipt.js. Retrying is safe
+      // regardless, because the ApiIdentifier stays the same either way.
+      const err = new Error('Invoice4U request timed out — result is unknown, not a confirmed failure');
+      err.code = 'TIMEOUT';
+      throw err;
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!res.ok) {
     const err = new Error(`Invoice4U HTTP ${res.status}`);

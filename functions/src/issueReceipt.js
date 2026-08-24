@@ -6,16 +6,25 @@
 //   4. record success or failure (receiptState — failure never erases the
 //      payment fact recorded in step 2)
 //
-// Not wired into index.html yet, and not deployed (no Blaze plan active) —
-// see investigation doc §13, Phase A. This file exists so the shape is
-// right and can be exercised against the Firestore/Functions emulators now;
-// step 3 cannot be exercised for real until Invoice4U QA credentials exist.
+// B3 (2026-08-24): wired to real UI, verified end-to-end against the
+// Firestore/Auth/Functions emulators with invoice4uClient running in mock
+// mode (see invoice4uMock.js) — no real Invoice4U account involved. Not
+// deployed to production; no Blaze-dependent operation happens by this file
+// merely existing.
 'use strict';
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { getInvoice4uConfig } = require('./config');
 const { beginReceiptAttempt, recordReceiptSuccess, recordReceiptFailure, ReceiptStateError } = require('./receiptState');
 const { createReceipt, invoice4uApiToken } = require('./invoice4uClient');
+
+// Server-side deployment configuration ONLY — never Firestore, never
+// client-supplied. Set via `functions/.env.*` at deploy time (B4+), not at
+// runtime. Defaults to 'qa' so an unset value can never accidentally reach
+// Invoice4U production. See investigation doc §34 (Environment Safety).
+function getInvoice4uEnvironment() {
+  return process.env.INVOICE4U_ENVIRONMENT === 'production' ? 'production' : 'qa';
+}
 
 const issueReceipt = onCall({
   secrets: [invoice4uApiToken],
@@ -29,11 +38,11 @@ const issueReceipt = onCall({
     throw new HttpsError('permission-denied', 'admin authentication required');
   }
 
-  const { appointmentId, amount, method, customerName, itemDescription } = request.data || {};
+  const { appointmentId, amount, method, customerName, itemDescription, _mockScenario } = request.data || {};
   if (!appointmentId || typeof appointmentId !== 'string') {
     throw new HttpsError('invalid-argument', 'appointmentId is required');
   }
-  if (typeof amount !== 'number' || !(amount > 0)) {
+  if (typeof amount !== 'number' || !Number.isFinite(amount) || !(amount > 0)) {
     throw new HttpsError('invalid-argument', 'amount must be a positive number');
   }
   if (!['cash', 'bit', 'paybox'].includes(method)) {
@@ -55,7 +64,12 @@ const issueReceipt = onCall({
   }
 
   if (attempt.status === 'already-issued') {
-    return { status: 'issued', receipt: attempt.receipt };
+    // Same response SHAPE as the fresh-success branch below — found during
+    // B3 verification: this used to return { receipt: {...} } (nested)
+    // while a fresh success returned documentNumber/pdfUrl at the top
+    // level, so a caller reading result.documentNumber after a duplicate
+    // click got undefined instead of the real, already-issued value.
+    return { status: 'issued', documentNumber: attempt.receipt.documentNumber, pdfUrl: attempt.receipt.pdfUrl };
   }
 
   // ---- 3. Call Invoice4U ----
@@ -64,16 +78,20 @@ const issueReceipt = onCall({
 
   try {
     const result = await createReceipt({
-      environment: config.environment,
+      environment: getInvoice4uEnvironment(),
       documentType: config.documentType,
       apiIdentifier: attempt.apiIdentifier,
       customerName,
       itemDescription,
       amount,
       paymentType,
+      // TEST-ONLY: only has any effect when the server itself is running
+      // with INVOICE4U_MOCK_MODE=true (Functions Emulator). See
+      // invoice4uMock.js and invoice4uClient.js.
+      _mockScenario,
     });
 
-    // ---- 4a. Success ----
+    // ---- 4a. Success (including idempotent-duplicate, e.g. Invoice4U code 134) ----
     await recordReceiptSuccess(appointmentId, {
       documentId: result.documentId,
       documentNumber: result.documentNumber,
@@ -84,12 +102,21 @@ const issueReceipt = onCall({
     return { status: 'issued', documentNumber: result.documentNumber, pdfUrl: result.pdfUrl };
   } catch (e) {
     // ---- 4b. Failure — payment fact from step 2 is untouched and safe ----
-    await recordReceiptFailure(appointmentId, e.code === 'NOT_CONFIGURED'
+    const isTimeout = e.code === 'TIMEOUT';
+    const lastError = e.code === 'NOT_CONFIGURED'
       ? 'Invoice4U is not configured yet (missing API token)'
-      : e.message);
+      : e.message;
+    await recordReceiptFailure(appointmentId, lastError);
 
     if (e.code === 'NOT_CONFIGURED') {
       throw new HttpsError('failed-precondition', 'Invoice4U integration is not configured yet');
+    }
+    if (isTimeout) {
+      // Distinct from a confirmed failure: we don't know whether Invoice4U
+      // actually created the document. The client must present this
+      // differently ("unknown — safe to retry") from a definite error.
+      // Retrying is safe regardless — same ApiIdentifier either way.
+      throw new HttpsError('deadline-exceeded', 'Invoice4U did not respond in time — result is unknown, retry is safe');
     }
     throw new HttpsError('internal', 'failed to issue receipt — payment was recorded, retry is safe');
   }

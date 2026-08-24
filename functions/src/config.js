@@ -17,10 +17,15 @@ const CONFIG_PATH = ['config', 'invoice4uIntegration'];
 // (e.g. first deploy, before anyone has written it). Mirrors the values
 // approved 2026-08-24: Mirit is an עוסק פטור → Receipt (DocumentType=2);
 // Cash/Bit/PayBox are the only three payment methods in use.
+//
+// Deliberately NOT here: which Invoice4U environment (QA/production) to
+// call. That is a deployment-time decision (functions/.env.*, set only at
+// `firebase deploy`), never a Firestore document — see investigation doc
+// §34 (Environment Safety). getInvoice4uEnvironment() in issueReceipt.js
+// reads it from process.env, independent of this config.
 const DEFAULT_CONFIG = Object.freeze({
   documentType: 2,
   paymentTypeMap: Object.freeze({ cash: 4, bit: 8, paybox: 9 }),
-  environment: 'qa',
 });
 
 let cached = null;
