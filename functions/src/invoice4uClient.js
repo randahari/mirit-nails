@@ -3,35 +3,43 @@
 // issueReceipt.js own those concerns. This module's only job is: given a
 // fully-formed request, talk to Invoice4U and normalize the response.
 //
-// The API token is never a literal in this repo. Two SEPARATE Cloud
-// Functions v2 secrets exist in Secret Manager (Secret Manager-backed) —
-// one per Invoice4U environment:
-//   firebase functions:secrets:set INVOICE4U_API_TOKEN_QA
+// The API token is never a literal in this repo. It is declared as a Cloud
+// Functions v2 secret (Secret Manager-backed):
 //   firebase functions:secrets:set INVOICE4U_API_TOKEN_PRODUCTION
-// but this module only ever calls defineSecret() for the ONE matching the
-// deploy-time INVOICE4U_ENVIRONMENT value — found during the first real
-// B4A deploy attempt: Cloud Functions v2's deploy-time discovery step
-// requires a resolvable value for EVERY defineSecret() call anywhere in
-// the loaded module graph, regardless of whether a specific function's
-// `secrets:` array references it. Calling defineSecret() for both
-// unconditionally made a production-configured deploy fail because the
-// (deliberately not-yet-created) QA secret couldn't resolve. Only ever
-// defining the one that matches this deployment's environment — still
-// itself a second, independent lock alongside getInvoice4uEnvironment()
-// (issueReceipt.js), since a production deploy can now only ever resolve
-// to the production secret name — closes that. See investigation doc §34
-// (Environment Safety). Until the relevant secret is set, createReceipt()
-// throws a clear, explicit error instead of attempting (and silently
-// mishandling) a real network call.
+//
+// Architecture note (found during the first real B4A deploy attempts):
+// Cloud Functions v2's deploy-time DISCOVERY step evaluates this module —
+// including every defineSecret() call — BEFORE any `.env.<project>` file
+// is loaded into process.env, and the discovery child process does not
+// inherit the invoking shell's environment either. Concretely: which
+// secret NAME gets bound to a function can only ever be a static,
+// hardcoded decision in code — it cannot be conditioned on
+// INVOICE4U_ENVIRONMENT or any other deploy-time/shell value, confirmed
+// empirically (a conditional defineSecret() call based on
+// process.env.INVOICE4U_ENVIRONMENT always saw `undefined` at discovery
+// time, regardless of .env.mirit-nails or an exported shell variable).
+//
+// This function (issueReceipt, this deployment) is, by design, the
+// PRODUCTION-only deployment — QA is fully covered by the Emulator Suite +
+// invoice4uMock.js (approved: QA is preferred-not-mandatory, no live QA
+// cloud function needed). So hardcoding the production secret name here is
+// not a compromise — it's the correct shape for what's actually being
+// deployed. getInvoice4uEnvironment() (issueReceipt.js) still correctly
+// picks the HOST at genuine runtime (that value IS available once the
+// function is actually serving live requests, unlike at discovery time) —
+// so the host/token pairing for THIS deployment is: always the production
+// host, always the production secret, both server-side, never
+// client-influenceable. A live QA cloud function, if ever wanted later,
+// would need to be a genuinely separate function with its own hardcoded
+// INVOICE4U_API_TOKEN_QA — not a runtime branch inside this one. Until the
+// secret is set, createReceipt() throws a clear, explicit error instead of
+// attempting (and silently mishandling) a real network call.
 'use strict';
 
 const { defineSecret } = require('firebase-functions/params');
 const { mockCreateReceipt } = require('./invoice4uMock');
 
-const invoice4uEnvironment = process.env.INVOICE4U_ENVIRONMENT === 'production' ? 'production' : 'qa';
-const invoice4uApiToken = defineSecret(
-  invoice4uEnvironment === 'production' ? 'INVOICE4U_API_TOKEN_PRODUCTION' : 'INVOICE4U_API_TOKEN_QA'
-);
+const invoice4uApiToken = defineSecret('INVOICE4U_API_TOKEN_PRODUCTION');
 
 const HOSTS = {
   qa: 'https://apiqa.invoice4u.co.il/Services/ApiService.svc',
@@ -61,10 +69,16 @@ async function createReceipt(req) {
     return mockCreateReceipt(req);
   }
 
-  const host = HOSTS[req.environment];
-  if (!host) {
-    throw new Error(`unknown Invoice4U environment: ${req.environment}`);
+  // This deployment only ever holds the production secret (see header
+  // comment) — the host must match, or refuse outright rather than risk
+  // pairing the production token with the wrong host. This is a hard
+  // assertion, not a fallback: req.environment coming through as anything
+  // else would mean getInvoice4uEnvironment() (issueReceipt.js) somehow
+  // read a value this deployment was never configured for.
+  if (req.environment !== 'production') {
+    throw new Error(`refusing: this deployment only holds the production secret, but resolved environment was "${req.environment}"`);
   }
+  const host = HOSTS.production;
 
   const token = invoice4uApiToken.value();
   if (!token) {
