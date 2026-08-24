@@ -1,14 +1,18 @@
 rules_version = '2';
 
 // ============================================================================
-// PROPOSAL — NOT YET DEPLOYED TO PRODUCTION.
-//
-// The rules live in Firebase Console today are fully open:
+// LIVE IN PRODUCTION since 2026-08-24 (Checkpoint 2). Replaced the previous
+// fully-open rules:
 //   match /{document=**} { allow read, write: if true; }
-// (confirmed 2026-08-24 — see docs/... investigation artifact).
+// Verified post-deployment: 7/7 automated security checks against real
+// production Firestore (all correctly denied, zero data modified), plus a
+// manual positive-write pass by the user and Mirit through the live app
+// (customer booking + Mirit admin actions, confirmed working end to end).
+// This file itself was only added to the `main` branch afterward, to close
+// the gap between what's deployed and what's tracked in git — the rules
+// text is unchanged from what passed 20/20 in test/firestore.rules.test.js.
 //
-// This file is the drafted replacement, scoped narrowly to what the
-// Invoice4U receipt project requires:
+// Scoped narrowly to what the Invoice4U receipt project requires:
 //   - block ALL client writes to the new `payment` / `receipt` fields on
 //     appointments (only the Cloud Function, via the Admin SDK — which
 //     bypasses these rules entirely — may write them)
