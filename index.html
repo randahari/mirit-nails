@@ -1470,10 +1470,15 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
       <div style="font-size:13px;color:var(--ink-mute);margin-top:6px">כניסה לממשק ניהול</div>
     </div>
     <div style="margin-bottom:16px">
+      <label class="input-label">אימייל</label>
+      <input class="input" type="email" id="admin-email" placeholder="האימייל שלך" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('admin-password').focus()">
+    </div>
+    <div style="margin-bottom:16px">
       <label class="input-label">סיסמה</label>
-      <input class="input" type="password" id="admin-password" placeholder="הזיני סיסמה" onkeydown="if(event.key==='Enter')checkAdminLogin()">
+      <input class="input" type="password" id="admin-password" placeholder="הזיני סיסמה" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkAdminLogin()">
     </div>
     <button class="btn btn-primary" onclick="checkAdminLogin()">כניסה</button>
+    <div style="text-align:center;margin-top:14px;font-size:12.5px;color:var(--ink-mute);cursor:pointer" onclick="sendAdminPasswordReset()">שכחתי סיסמה</div>
     <button class="btn btn-ghost" style="margin-top:10px;padding:14px;font-size:13px" onclick="closeAdminModal()">ביטול</button>
   </div>
 </div>
@@ -1481,7 +1486,8 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, Timestamp, doc, getDoc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, Timestamp, doc, getDoc, setDoc, updateDoc, deleteDoc, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAnR4HJNhnheWBalVtTd9em6wVl5vrSuJU",
@@ -1494,6 +1500,19 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+
+// ===== Local development only =====
+// Points at the Firebase Emulator Suite when this page is served from
+// localhost (e.g. via `firebase emulators:start`). Has zero effect in
+// production — the real site is never served from localhost, so this
+// branch never runs there. Lets the Firebase Authentication migration and
+// Firestore Rules be verified end-to-end without touching production data
+// or requiring the Blaze plan.
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+}
 
 // ===== Expose db and Firestore functions to global scope =====
 window._db = db;
@@ -1509,6 +1528,13 @@ window._getDoc = getDoc;
 window._setDoc = setDoc;
 window._updateDoc = updateDoc;
 window._deleteDoc = deleteDoc;
+
+// ===== Expose Auth and Auth functions to global scope (same convention as db above) =====
+window._auth = auth;
+window._signIn = signInWithEmailAndPassword;
+window._signOut = signOut;
+window._onAuthStateChanged = onAuthStateChanged;
+window._sendPasswordReset = sendPasswordResetEmail;
 
 window._fbReady = true;
 document.dispatchEvent(new Event('fbReady'));
@@ -1548,7 +1574,6 @@ const state = {
   lastBooking: null,
 };
 
-const ADMIN_PASS = 'MD110589';
 const MIRIT_WA = '972504488463';
 const MIRIT_SIGNATURE = '— מירית עיצוב ציפורניים';
 
@@ -2774,8 +2799,8 @@ window.miritNav = function(tab) {
   }
 };
 
-window.logoutMirit = function() {
-  localStorage.removeItem('miritAdmin');
+window.logoutMirit = async function() {
+  await window._signOut(window._auth);
   goTo('screen-welcome');
   document.getElementById('mirit-nav').classList.remove('show');
 };
@@ -3863,25 +3888,46 @@ async function saveAvailability() {
 }
 
 // ===== ADMIN LOGIN =====
+// Firebase Authentication (email+password), single admin identity — replaces
+// the old ADMIN_PASS + localStorage gate. See investigation doc §16.
 function showAdminModal() {
   const m = document.getElementById('admin-modal');
   m.style.display = 'flex';
-  setTimeout(() => document.getElementById('admin-password').focus(), 100);
+  setTimeout(() => document.getElementById('admin-email').focus(), 100);
 }
 function closeAdminModal() {
   document.getElementById('admin-modal').style.display = 'none';
+  document.getElementById('admin-email').value = '';
   document.getElementById('admin-password').value = '';
 }
 window.closeAdminModal = closeAdminModal;
-window.checkAdminLogin = function() {
+window.checkAdminLogin = async function() {
+  const email = document.getElementById('admin-email').value.trim();
   const pw = document.getElementById('admin-password').value;
-  if (pw === ADMIN_PASS) {
-    localStorage.setItem('miritAdmin','1');
+  if (!email || !pw) { showToast('נא למלא אימייל וסיסמה'); return; }
+  const btn = document.querySelector('#admin-modal .btn-primary');
+  if (btn) { btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; }
+  try {
+    await window._signIn(window._auth, email, pw);
     closeAdminModal();
     enterMiritMode();
-  } else {
-    showToast('סיסמה שגויה');
+  } catch (e) {
+    showToast('אימייל או סיסמה שגויים');
+  } finally {
+    if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'all'; }
   }
+};
+
+window.sendAdminPasswordReset = async function() {
+  const email = document.getElementById('admin-email').value.trim();
+  if (!email) { showToast('נא להזין קודם את האימייל'); return; }
+  try {
+    await window._sendPasswordReset(window._auth, email);
+  } catch (e) {
+    // Intentionally the same message on success and failure (e.g. unknown
+    // email) — avoids revealing which email addresses have admin accounts.
+  }
+  showToast('אם קיים חשבון עם האימייל הזה, נשלח אליו קישור לבחירת סיסמה');
 };
 
 function enterMiritMode() {
@@ -3905,18 +3951,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ===== APP INIT =====
+// Initial routing (customer flow vs. Mirit dashboard) is decided once, from
+// Firebase Auth's own session state — not from a localStorage flag. Firebase
+// resolves a persisted session from IndexedDB almost immediately, so this
+// adds no perceptible delay behind the existing loading screen.
+let _authRouted = false;
 function startApp() {
   document.getElementById('loading').style.opacity = '0';
   document.getElementById('loading').style.transition = 'opacity 0.5s';
   setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 500);
 
-  // Check if Mirit is logged in
-  if (localStorage.getItem('miritAdmin') === '1') {
-    enterMiritMode();
-    return;
-  }
-
-  initCustomerFlow();
+  window._onAuthStateChanged(window._auth, (user) => {
+    if (_authRouted) return; // only the initial route is decided here —
+    _authRouted = true;      // later login/logout is handled by checkAdminLogin()/logoutMirit() directly
+    if (user) {
+      enterMiritMode();
+    } else {
+      initCustomerFlow();
+    }
+  });
 }
 
 if (window._fbReady) {
