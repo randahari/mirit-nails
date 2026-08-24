@@ -16,7 +16,7 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { getInvoice4uConfig } = require('./config');
 const { beginReceiptAttempt, recordReceiptSuccess, recordReceiptFailure, ReceiptStateError } = require('./receiptState');
-const { createReceipt, invoice4uApiToken } = require('./invoice4uClient');
+const { createReceipt, invoice4uApiTokenQa, invoice4uApiTokenProduction } = require('./invoice4uClient');
 
 // Server-side deployment configuration ONLY — never Firestore, never
 // client-supplied. Set via `functions/.env.*` at deploy time (B4+), not at
@@ -39,7 +39,10 @@ function isReceiptIssuanceEnabled() {
 }
 
 const issueReceipt = onCall({
-  secrets: [invoice4uApiToken],
+  // Both declared, only one ever actually resolved to a real value in any
+  // given deployment: getInvoice4uEnvironment() picks the environment at
+  // deploy time, and invoice4uClient.js reads only the matching secret.
+  secrets: [invoice4uApiTokenQa, invoice4uApiTokenProduction],
   // Cheap insurance, not a real bottleneck at this business's volume: caps
   // how many concurrent instances a runaway client retry loop (or abuse)
   // could spin up. See investigation doc §17 Blaze cost assessment.

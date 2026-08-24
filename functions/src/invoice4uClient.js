@@ -3,19 +3,27 @@
 // issueReceipt.js own those concerns. This module's only job is: given a
 // fully-formed request, talk to Invoice4U and normalize the response.
 //
-// The API token is never a literal in this repo. It is declared as a Cloud
-// Functions v2 secret (Secret Manager-backed) and is simply undefined until
-// someone runs:
-//   firebase functions:secrets:set INVOICE4U_API_TOKEN
-// That is a deploy-time operation, not a code change — see investigation
-// doc §17. Until it's set, callInvoice4u() throws a clear, explicit error
+// The API token is never a literal in this repo. Two SEPARATE Cloud
+// Functions v2 secrets (Secret Manager-backed) — one per Invoice4U
+// environment — are declared here and are simply undefined until someone
+// runs:
+//   firebase functions:secrets:set INVOICE4U_API_TOKEN_QA
+//   firebase functions:secrets:set INVOICE4U_API_TOKEN_PRODUCTION
+// Two independent secrets, not one shared token switched by environment,
+// is deliberate: it's a second, independent lock alongside
+// getInvoice4uEnvironment() (issueReceipt.js) — both which secret is read
+// AND which host is called are pinned by the SAME deploy-time environment
+// value, so there's no path where a mismatched token/host pairing could
+// occur. See investigation doc §34 (Environment Safety). Until the
+// relevant secret is set, createReceipt() throws a clear, explicit error
 // instead of attempting (and silently mishandling) a real network call.
 'use strict';
 
 const { defineSecret } = require('firebase-functions/params');
 const { mockCreateReceipt } = require('./invoice4uMock');
 
-const invoice4uApiToken = defineSecret('INVOICE4U_API_TOKEN');
+const invoice4uApiTokenQa = defineSecret('INVOICE4U_API_TOKEN_QA');
+const invoice4uApiTokenProduction = defineSecret('INVOICE4U_API_TOKEN_PRODUCTION');
 
 const HOSTS = {
   qa: 'https://apiqa.invoice4u.co.il/Services/ApiService.svc',
@@ -45,20 +53,20 @@ async function createReceipt(req) {
     return mockCreateReceipt(req);
   }
 
-  const token = invoice4uApiToken.value();
-  if (!token) {
-    // Expected and normal until the manual "attach Invoice4U QA credentials"
-    // step (investigation doc §19, item 1) is done. Surfaced as a distinct
-    // error code so callers can show a clear "not configured yet" message
-    // rather than a confusing network failure.
-    const err = new Error('INVOICE4U_API_TOKEN secret is not configured');
-    err.code = 'NOT_CONFIGURED';
-    throw err;
-  }
-
   const host = HOSTS[req.environment];
   if (!host) {
     throw new Error(`unknown Invoice4U environment: ${req.environment}`);
+  }
+
+  const token = req.environment === 'production' ? invoice4uApiTokenProduction.value() : invoice4uApiTokenQa.value();
+  if (!token) {
+    // Expected and normal until the relevant secret (see header comment)
+    // has been set for this environment. Surfaced as a distinct error code
+    // so callers can show a clear "not configured yet" message rather than
+    // a confusing network failure.
+    const err = new Error(`Invoice4U ${req.environment} API token secret is not configured`);
+    err.code = 'NOT_CONFIGURED';
+    throw err;
   }
 
   const body = {
@@ -130,4 +138,4 @@ async function createReceipt(req) {
   };
 }
 
-module.exports = { createReceipt, invoice4uApiToken, HOSTS };
+module.exports = { createReceipt, invoice4uApiTokenQa, invoice4uApiTokenProduction, HOSTS };
