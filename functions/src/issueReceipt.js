@@ -16,29 +16,15 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { getInvoice4uConfig } = require('./config');
 const { beginReceiptAttempt, recordReceiptSuccess, recordReceiptFailure, ReceiptStateError } = require('./receiptState');
-const { createReceipt, invoice4uApiTokenQa, invoice4uApiTokenProduction } = require('./invoice4uClient');
+const { createReceipt, invoice4uApiToken } = require('./invoice4uClient');
 
 // Server-side deployment configuration ONLY — never Firestore, never
 // client-supplied. Set via `functions/.env.*` at deploy time (B4+), not at
 // runtime. Defaults to 'qa' so an unset value can never accidentally reach
 // Invoice4U production. See investigation doc §34 (Environment Safety).
-//
-// Read once, at module load — Cloud Functions v2 loads the .env file
-// before this module is required, and `secrets:` below (which determines
-// which secret gets bound to the deployed function at all) must be a
-// static value at definition time, not something resolved per-request.
-const invoice4uEnvironment = process.env.INVOICE4U_ENVIRONMENT === 'production' ? 'production' : 'qa';
 function getInvoice4uEnvironment() {
-  return invoice4uEnvironment;
+  return process.env.INVOICE4U_ENVIRONMENT === 'production' ? 'production' : 'qa';
 }
-
-// Only the secret matching THIS deployment's configured environment is
-// ever declared/required — found during the first real B4A deploy attempt:
-// declaring both unconditionally made Cloud Functions require a value for
-// INVOICE4U_API_TOKEN_QA too, which correctly does not exist yet (QA was
-// explicitly deferred, not a blocker). A production-configured deploy now
-// never references the QA secret at all, so its absence can't block it.
-const activeInvoice4uSecret = invoice4uEnvironment === 'production' ? invoice4uApiTokenProduction : invoice4uApiTokenQa;
 
 // B4A readiness gate — deploy-time only, never Firestore, never
 // client-reachable, no code path bypasses it. Defaults CLOSED: unless a
@@ -54,7 +40,7 @@ function isReceiptIssuanceEnabled() {
 
 const issueReceipt = onCall({
   // Only the secret for THIS deployment's environment — see above.
-  secrets: [activeInvoice4uSecret],
+  secrets: [invoice4uApiToken],
   // Cheap insurance, not a real bottleneck at this business's volume: caps
   // how many concurrent instances a runaway client retry loop (or abuse)
   // could spin up. See investigation doc §17 Blaze cost assessment.

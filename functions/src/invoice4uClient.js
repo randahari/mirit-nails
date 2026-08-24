@@ -4,26 +4,34 @@
 // fully-formed request, talk to Invoice4U and normalize the response.
 //
 // The API token is never a literal in this repo. Two SEPARATE Cloud
-// Functions v2 secrets (Secret Manager-backed) — one per Invoice4U
-// environment — are declared here and are simply undefined until someone
-// runs:
+// Functions v2 secrets exist in Secret Manager (Secret Manager-backed) —
+// one per Invoice4U environment:
 //   firebase functions:secrets:set INVOICE4U_API_TOKEN_QA
 //   firebase functions:secrets:set INVOICE4U_API_TOKEN_PRODUCTION
-// Two independent secrets, not one shared token switched by environment,
-// is deliberate: it's a second, independent lock alongside
-// getInvoice4uEnvironment() (issueReceipt.js) — both which secret is read
-// AND which host is called are pinned by the SAME deploy-time environment
-// value, so there's no path where a mismatched token/host pairing could
-// occur. See investigation doc §34 (Environment Safety). Until the
-// relevant secret is set, createReceipt() throws a clear, explicit error
-// instead of attempting (and silently mishandling) a real network call.
+// but this module only ever calls defineSecret() for the ONE matching the
+// deploy-time INVOICE4U_ENVIRONMENT value — found during the first real
+// B4A deploy attempt: Cloud Functions v2's deploy-time discovery step
+// requires a resolvable value for EVERY defineSecret() call anywhere in
+// the loaded module graph, regardless of whether a specific function's
+// `secrets:` array references it. Calling defineSecret() for both
+// unconditionally made a production-configured deploy fail because the
+// (deliberately not-yet-created) QA secret couldn't resolve. Only ever
+// defining the one that matches this deployment's environment — still
+// itself a second, independent lock alongside getInvoice4uEnvironment()
+// (issueReceipt.js), since a production deploy can now only ever resolve
+// to the production secret name — closes that. See investigation doc §34
+// (Environment Safety). Until the relevant secret is set, createReceipt()
+// throws a clear, explicit error instead of attempting (and silently
+// mishandling) a real network call.
 'use strict';
 
 const { defineSecret } = require('firebase-functions/params');
 const { mockCreateReceipt } = require('./invoice4uMock');
 
-const invoice4uApiTokenQa = defineSecret('INVOICE4U_API_TOKEN_QA');
-const invoice4uApiTokenProduction = defineSecret('INVOICE4U_API_TOKEN_PRODUCTION');
+const invoice4uEnvironment = process.env.INVOICE4U_ENVIRONMENT === 'production' ? 'production' : 'qa';
+const invoice4uApiToken = defineSecret(
+  invoice4uEnvironment === 'production' ? 'INVOICE4U_API_TOKEN_PRODUCTION' : 'INVOICE4U_API_TOKEN_QA'
+);
 
 const HOSTS = {
   qa: 'https://apiqa.invoice4u.co.il/Services/ApiService.svc',
@@ -58,7 +66,7 @@ async function createReceipt(req) {
     throw new Error(`unknown Invoice4U environment: ${req.environment}`);
   }
 
-  const token = req.environment === 'production' ? invoice4uApiTokenProduction.value() : invoice4uApiTokenQa.value();
+  const token = invoice4uApiToken.value();
   if (!token) {
     // Expected and normal until the relevant secret (see header comment)
     // has been set for this environment. Surfaced as a distinct error code
@@ -138,4 +146,4 @@ async function createReceipt(req) {
   };
 }
 
-module.exports = { createReceipt, invoice4uApiTokenQa, invoice4uApiTokenProduction, HOSTS };
+module.exports = { createReceipt, invoice4uApiToken, HOSTS };
