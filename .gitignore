@@ -4,3 +4,8 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 .firebase/
+.env
+.env.local
+functions/.env
+functions/.env.local
+functions/.env.*
