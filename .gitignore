@@ -8,4 +8,8 @@ ui-debug.log
 .env.local
 functions/.env
 functions/.env.local
-functions/.env.*
+# NOTE: functions/.env.<project-id> files (e.g. functions/.env.mirit-nails)
+# are deliberately NOT ignored — they hold deploy-time configuration only
+# (e.g. INVOICE4U_ENVIRONMENT, RECEIPT_ISSUANCE_ENABLED), never secrets,
+# and are meant to be tracked like firebase.json. A broader
+# "functions/.env.*" pattern here previously (wrongly) excluded them too.
