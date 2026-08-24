@@ -439,14 +439,18 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
   box-shadow:0 0 0 3px rgba(201,164,122,0.12);
 }
 .pay-option:active{transform:scale(.97)}
-.pay-option .check-circle{width:20px;height:20px}
+.pay-option .check-circle{width:20px;height:20px;position:relative}
+.pay-option.active .check-circle::after{
+  content:'';position:absolute;top:50%;left:50%;width:10px;height:10px;
+  border-radius:50%;background:var(--rose-gold);transform:translate(-50%,-50%);
+}
 .pay-option-label{font-size:13.5px;font-weight:600;color:var(--ink)}
 .receipt-modal-msg{
   display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:20px 8px;
 }
 .receipt-modal-msg .rm-icon{font-size:40px;line-height:1}
 .receipt-modal-msg .rm-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;color:var(--ink)}
-.receipt-modal-msg .rm-sub{font-size:13px;color:var(--ink-soft)}
+.receipt-modal-msg .rm-sub{font-size:13px;color:var(--ink-soft);white-space:pre-line}
 .receipt-status-badge{
   display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;
   border-radius:999px;padding:3px 9px;margin-top:6px;letter-spacing:0.02em;
@@ -3171,8 +3175,8 @@ async function performIssueReceipt(apptId, amount, method, appt) {
       // beginReceiptAttempt succeeded — payment.* IS recorded.
       showReceiptMessage({
         icon: '⚠️',
-        title: 'הפקת הקבלה נכשלה',
-        sub: 'התשלום נקלט. ניתן לנסות שוב בבטחה.',
+        title: 'לא הצלחנו להפיק קבלה',
+        sub: 'פרטי התשלום נשמרו. הקבלה עדיין לא הופקה.\nאנא נסי שוב.',
         showRetry: true,
       });
     }
