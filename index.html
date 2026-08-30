@@ -1469,7 +1469,15 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
       <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500">✏️ עריכת תור</div>
       <div onclick="hideMiritEditModal()" style="width:32px;height:32px;border-radius:50%;background:var(--rose-blush);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);font-size:18px">×</div>
     </div>
-    <!-- Client info (read-only) -->
+    <!-- Customer name (editable — the only editable field here; phone stays read-only, see below) -->
+    <div style="margin-bottom:14px">
+      <div class="input-label">שם הלקוחה</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="input" type="text" id="edit-client-name" style="flex:1">
+        <button class="btn btn-primary" id="edit-name-save-btn" onclick="saveCustomerName()" style="width:auto;padding:14px 18px;white-space:nowrap;flex-shrink:0">שמירה</button>
+      </div>
+    </div>
+    <!-- Client info (read-only: phone + current appointment time) -->
     <div id="edit-client-info" style="background:rgba(201,164,122,0.08);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:20px;font-size:14px;color:var(--ink-soft)"></div>
     <!-- Services -->
     <div style="margin-bottom:16px">
@@ -3621,12 +3629,14 @@ window.miritEditAppt = async function(id) {
       selectedTime: null
     };
 
-    // Client info
+    // Customer name (editable) + client info (read-only: phone + current time)
     const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
     const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
     const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('edit-client-name').value = a.name || '';
+    document.getElementById('edit-name-save-btn').textContent = 'שמירה';
     document.getElementById('edit-client-info').innerHTML =
-      `<strong>${a.name}</strong> &nbsp;·&nbsp; ${a.phone}<br>
+      `<strong>${a.phone}</strong><br>
        <span style="font-size:12px">תור נוכחי: ${dateStr} ${timeStr} · ${branch}</span>`;
 
     // Note
@@ -3663,6 +3673,66 @@ window.miritEditAppt = async function(id) {
   } catch(e) {
     console.error(e);
     showToast('שגיאה בטעינת התור');
+  }
+};
+
+// ===== CUSTOMER NAME EDIT =====
+// Identity stays the normalized phone — this only ever touches the display
+// name, never phone/ExtNumber. Propagates to EVERY appointment sharing the
+// same normalized phone, including ones with an already-issued receipt
+// (2026-08-24, product correction: `name` is current customer information,
+// not part of any accounting record — only `receipt`/`payment` themselves
+// are immutable once issued, and this function never touches either of
+// those fields, only `name`/`nameEditedAt`). Admin-only in practice (this
+// button only exists inside the Mirit-only edit modal) and enforced by
+// firestore.rules requiring isAdmin() to change `name` on any appointment.
+window.saveCustomerName = async function() {
+  const newName = document.getElementById('edit-client-name').value.trim();
+  if (!newName) { showToast('נא להזין שם'); return; }
+
+  const es = window._editState;
+  if (!es.apptId || !es.appt) return;
+  const phone = es.appt.phone;
+
+  const btn = document.getElementById('edit-name-save-btn');
+  btn.style.opacity = '0.5';
+  btn.style.pointerEvents = 'none';
+  btn.textContent = 'שומרת...';
+
+  try {
+    const q = window._query(
+      window._col(window._db, 'appointments'),
+      window._where('phone', '==', phone)
+    );
+    const snap = await window._getDocs(q);
+    const now = window._Timestamp.now();
+
+    // Every appointment with this phone gets the corrected name — past,
+    // future, and ones with an already-issued receipt alike. This never
+    // touches `receipt`/`payment` themselves (only `name`/`nameEditedAt`),
+    // so the accounting document those fields describe stays exactly as
+    // issued; only the customer's current display name changes.
+    //
+    // Plain per-document updates rather than a writeBatch — a single
+    // customer's appointment count is never remotely close to Firestore's
+    // 500-ops/batch ceiling, and this sidesteps that limit entirely rather
+    // than needing chunking logic for a case that won't occur in practice.
+    await Promise.all(snap.docs.map(d => window._updateDoc(d.ref, { name: newName, nameEditedAt: now })));
+
+    es.appt.name = newName; // keep local edit-state in sync for this modal session
+    showToast('שם הלקוחה עודכן ✓');
+
+    // Refresh whichever admin list is currently visible so cards reflect
+    // the new name immediately.
+    if (typeof loadMiritAppts === 'function' && document.getElementById('screen-mirit-appts')?.classList.contains('active')) loadMiritAppts();
+    if (typeof loadMiritDashboard === 'function' && document.getElementById('screen-mirit')?.classList.contains('active')) loadMiritDashboard();
+  } catch (e) {
+    console.error(e);
+    showToast('שגיאה בעדכון השם');
+  } finally {
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'all';
+    btn.textContent = 'שמירה';
   }
 };
 

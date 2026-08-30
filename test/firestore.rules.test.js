@@ -163,6 +163,26 @@ test('reschedule (datetime + duration update) by admin succeeds end to end', asy
   );
 });
 
+// ---- 9. `name` requires admin (2026-08-24, customer-name-edit feature) ----
+test('admin CAN change name — customer-name-edit feature', async () => {
+  await assertSucceeds(
+    admin().doc('appointments/appt1').update({ name: 'שם מתוקן', nameEditedAt: new Date() })
+  );
+});
+test('customer (unauthenticated) CANNOT change name', async () => {
+  await assertFails(anon().doc('appointments/appt1').update({ name: 'שם מזויף' }));
+});
+test('logged-in user WITHOUT the admin claim also CANNOT change name', async () => {
+  await assertFails(loggedInNonAdmin().doc('appointments/appt1').update({ name: 'שם מזויף' }));
+});
+test('non-admin CANNOT change name even when bundled with an otherwise-permitted field', async () => {
+  await assertFails(anon().doc('appointments/appt1').update({ name: 'שם מזויף', status: 'cancelled' }));
+});
+test('existing self-cancel / reschedule flows (no `name` touched) remain unaffected by the new name rule', async () => {
+  await assertSucceeds(anon().doc('appointments/appt1').update({ status: 'cancelled' }));
+  await assertSucceeds(admin().doc('appointments/appt1').update({ services: 'פדיקור לק ג\'ל', duration: 75 }));
+});
+
 // ---- 8. Cloud Functions (Admin SDK) note ----
 // The Admin SDK used inside Cloud Functions bypasses Security Rules entirely
 // by design (this is documented Firebase behavior, not something these

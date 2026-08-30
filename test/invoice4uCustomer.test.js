@@ -166,7 +166,7 @@ test('D. lookup={d:null} → CreateCustomer returns 31/-2 → GetCustomerByExter
 test('D-race2. duplicate via catalog code 31 is also recognized as the same race signal', async () => {
   const createCustomerDuplicate31 = customerD({}, [{ ID: 31, Error: 'CustomerExternalNumberExists' }]);
 
-  await withFetchSequence([customerNotFoundD(), createCustomerDuplicate31, customerD({ ID: 999, ExtNumber: EXT_NUMBER })], async () => {
+  await withFetchSequence([customerNotFoundD(), createCustomerDuplicate31, customerD({ ID: 999, Name: 'לקוחה', ExtNumber: EXT_NUMBER })], async () => {
     const { clientId } = await resolveInvoice4uCustomer({ name: 'לקוחה', phone: VALID_PHONE });
     assert.equal(clientId, 999);
   });
@@ -335,10 +335,142 @@ test('never logs the token in any diagnostic path', async () => {
   });
 });
 
+// ---- F. Existing-customer Name sync (2026-08-24, customer-name-edit feature) ----
+// Contract VERIFIED against a real, approved, no-op production UpdateCustomer
+// call: request { cu: <full Customer>, token } → response { d: <full
+// Customer>, Errors: [] } on success, same "d"-direct pattern as every other
+// endpoint on this service.
+
+test('F1. existing customer with name already matching → no UpdateCustomer call, clientId returned normally', async () => {
+  await withFetchSequence([customerD({ ID: 42, Name: 'לקוחה', ExtNumber: EXT_NUMBER })], async (getCalls) => {
+    const { clientId } = await resolveInvoice4uCustomer({ name: 'לקוחה', phone: VALID_PHONE });
+    assert.equal(clientId, 42);
+    const calls = getCalls();
+    assert.equal(calls.length, 1, 'must not call UpdateCustomer when the name already matches');
+  });
+});
+
+test('F1b. name differs only by whitespace (trim/collapse) → still treated as matching, no UpdateCustomer call', async () => {
+  await withFetchSequence([customerD({ ID: 42, Name: '  לקוחה   שם ', ExtNumber: EXT_NUMBER })], async (getCalls) => {
+    const { clientId } = await resolveInvoice4uCustomer({ name: 'לקוחה שם', phone: VALID_PHONE });
+    assert.equal(clientId, 42);
+    assert.equal(getCalls().length, 1);
+  });
+});
+
+test('F2. existing customer with a genuinely different name → UpdateCustomer called with the FULL existing object (only Name changed), succeeds, clientId returned', async () => {
+  const existingFull = { ID: 42, Name: 'שם ישן', ExtNumber: EXT_NUMBER, Email: 'x@y.com', Phone: '0501112222', Active: true };
+  const updateSuccess = jsonResponse(200, { d: { ...existingFull, Name: 'שם חדש', Errors: [] } });
+
+  await withFetchSequence([customerD(existingFull), updateSuccess], async (getCalls) => {
+    const { clientId } = await resolveInvoice4uCustomer({ name: 'שם חדש', phone: VALID_PHONE });
+    assert.equal(clientId, 42);
+    const calls = getCalls();
+    assert.equal(calls.length, 2);
+    assert.match(calls[0].url, /\/GetCustomerByExternalNumber$/);
+    assert.match(calls[1].url, /\/UpdateCustomer$/);
+    // Full object echoed back — every existing field preserved, only Name changed.
+    assert.equal(calls[1].body.cu.Email, 'x@y.com');
+    assert.equal(calls[1].body.cu.Phone, '0501112222');
+    assert.equal(calls[1].body.cu.Active, true);
+    assert.equal(calls[1].body.cu.ID, 42);
+    assert.equal(calls[1].body.cu.ExtNumber, EXT_NUMBER);
+    assert.equal(calls[1].body.cu.Name, 'שם חדש');
+  });
+});
+
+test('F3. UpdateCustomer returns a business-level error → resolveInvoice4uCustomer throws, nothing after it is ever called', async () => {
+  const existingFull = { ID: 42, Name: 'שם ישן', ExtNumber: EXT_NUMBER };
+  const updateBusinessError = customerD({}, [{ ID: 28, Error: 'CustomerNameCanNotBeEmpty' }]);
+
+  await withFetchSequence([customerD(existingFull), updateBusinessError], async (getCalls) => {
+    await assert.rejects(
+      () => resolveInvoice4uCustomer({ name: 'שם חדש', phone: VALID_PHONE }),
+      (err) => { assert.equal(err.code, 'CUSTOMER_ERROR'); return true; }
+    );
+    assert.equal(getCalls().length, 2, 'must call UpdateCustomer once, never anything after it');
+  });
+});
+
+test('F4. UpdateCustomer returns a malformed response (missing d) → fails closed, CUSTOMER_INVALID_RESPONSE_SHAPE', async () => {
+  const existingFull = { ID: 42, Name: 'שם ישן', ExtNumber: EXT_NUMBER };
+  await withFetchSequence([customerD(existingFull), jsonResponse(200, { SomethingElse: true })], async () => {
+    await assert.rejects(
+      () => resolveInvoice4uCustomer({ name: 'שם חדש', phone: VALID_PHONE }),
+      (err) => { assert.equal(err.code, 'CUSTOMER_INVALID_RESPONSE_SHAPE'); return true; }
+    );
+  });
+});
+
+test('F5. UpdateCustomer response has a mismatched ID → fails closed, no ClientID trusted', async () => {
+  const existingFull = { ID: 42, Name: 'שם ישן', ExtNumber: EXT_NUMBER };
+  const wrongId = jsonResponse(200, { d: { ID: 999, Name: 'שם חדש', ExtNumber: EXT_NUMBER, Errors: [] } });
+  await withFetchSequence([customerD(existingFull), wrongId], async () => {
+    await assert.rejects(
+      () => resolveInvoice4uCustomer({ name: 'שם חדש', phone: VALID_PHONE }),
+      (err) => { assert.equal(err.code, 'CUSTOMER_INVALID_RESPONSE_SHAPE'); return true; }
+    );
+  });
+});
+
+test('F6. UpdateCustomer response has a mismatched ExtNumber → fails closed', async () => {
+  const existingFull = { ID: 42, Name: 'שם ישן', ExtNumber: EXT_NUMBER };
+  const wrongExt = jsonResponse(200, { d: { ID: 42, Name: 'שם חדש', ExtNumber: 972500000000, Errors: [] } });
+  await withFetchSequence([customerD(existingFull), wrongExt], async () => {
+    await assert.rejects(
+      () => resolveInvoice4uCustomer({ name: 'שם חדש', phone: VALID_PHONE }),
+      (err) => { assert.equal(err.code, 'CUSTOMER_INVALID_RESPONSE_SHAPE'); return true; }
+    );
+  });
+});
+
+test('F7. UpdateCustomer response confirms a stale/wrong Name (not the intended one) → fails closed, never trusted', async () => {
+  const existingFull = { ID: 42, Name: 'שם ישן', ExtNumber: EXT_NUMBER };
+  const staleName = jsonResponse(200, { d: { ID: 42, Name: 'שם ישן', ExtNumber: EXT_NUMBER, Errors: [] } }); // still the old name
+  await withFetchSequence([customerD(existingFull), staleName], async () => {
+    await assert.rejects(
+      () => resolveInvoice4uCustomer({ name: 'שם חדש', phone: VALID_PHONE }),
+      (err) => { assert.equal(err.code, 'CUSTOMER_INVALID_RESPONSE_SHAPE'); return true; }
+    );
+  });
+});
+
+test('F8. fail-closed proof: when UpdateCustomer fails, no clientId is ever returned (so createReceipt/CreateDocumentWithIdentifierValidation can never be reached — see issueReceipt.js)', async () => {
+  const existingFull = { ID: 42, Name: 'שם ישן', ExtNumber: EXT_NUMBER };
+  const updateBusinessError = customerD({}, [{ ID: 28, Error: 'CustomerNameCanNotBeEmpty' }]);
+
+  await withFetchSequence([customerD(existingFull), updateBusinessError], async (getCalls) => {
+    let clientId;
+    try {
+      ({ clientId } = await resolveInvoice4uCustomer({ name: 'שם חדש', phone: VALID_PHONE }));
+    } catch (e) { /* expected */ }
+    assert.equal(clientId, undefined, 'clientId must never be returned when name sync failed');
+    const docCalls = getCalls().filter((c) => /\/CreateDocumentWithIdentifierValidation$/.test(c.url));
+    assert.equal(docCalls.length, 0, 'no receipt document call may ever happen after a failed name sync');
+  });
+});
+
+test('F9. a genuinely new customer never triggers an UpdateCustomer call', async () => {
+  await withFetchSequence([customerNotFoundD(), customerD({ ID: 777, Name: 'אסתר', ExtNumber: EXT_NUMBER })], async (getCalls) => {
+    await resolveInvoice4uCustomer({ name: 'אסתר', phone: VALID_PHONE });
+    assert.equal(getCalls().filter((c) => /\/UpdateCustomer$/.test(c.url)).length, 0);
+  });
+});
+
+test('UpdateCustomer path never logs the token', async () => {
+  const existingFull = { ID: 42, Name: 'שם ישן', ExtNumber: EXT_NUMBER };
+  const updateBusinessError = customerD({}, [{ ID: 28, Error: 'x' }]);
+  await withFetchSequence([customerD(existingFull), updateBusinessError], async (getCalls, getLogged) => {
+    await assert.rejects(() => resolveInvoice4uCustomer({ name: 'שם חדש', phone: VALID_PHONE }));
+    const loggedText = JSON.stringify(getLogged());
+    assert.doesNotMatch(loggedText, new RegExp(FAKE_TOKEN));
+  });
+});
+
 // ---- No generic GetCustomers call occurs anywhere in this flow ----
 test('no request to /GetCustomers (generic search) occurs anywhere in a full resolve cycle', async () => {
   await withFetchSequence(
-    [customerNotFoundD(), customerD({}, [{ ID: -2, Error: 'CustomerExternalNumberExists' }]), customerD({ ID: 5, ExtNumber: EXT_NUMBER })],
+    [customerNotFoundD(), customerD({}, [{ ID: -2, Error: 'CustomerExternalNumberExists' }]), customerD({ ID: 5, Name: 'לקוחה', ExtNumber: EXT_NUMBER })],
     async (getCalls) => {
       await resolveInvoice4uCustomer({ name: 'לקוחה', phone: VALID_PHONE });
       const calls = getCalls();

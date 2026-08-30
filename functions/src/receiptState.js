@@ -85,8 +85,16 @@ async function beginReceiptAttempt(appointmentId, { amount, method, adminUid }) 
   });
 }
 
-/** Called after a successful (or idempotent-duplicate, Invoice4U code 134) CreateDocument call. */
-async function recordReceiptSuccess(appointmentId, { documentId, documentNumber, documentType, pdfUrl }) {
+/**
+ * Called after a successful (or idempotent-duplicate, Invoice4U code 134)
+ * CreateDocument call. `customerName`/`clientId` (2026-08-24,
+ * customer-name-edit feature) are an additive audit snapshot only — the
+ * actual name/Invoice4U customer identity used at issuance time, captured
+ * so it survives independently of whatever `appointments.name` says
+ * afterward (which may since have been corrected again). Purely additive:
+ * every existing field/behavior here is unchanged.
+ */
+async function recordReceiptSuccess(appointmentId, { documentId, documentNumber, documentType, pdfUrl, customerName, clientId }) {
   const db = getFirestore();
   await db.collection('appointments').doc(appointmentId).update({
     'receipt.status': 'issued',
@@ -94,6 +102,8 @@ async function recordReceiptSuccess(appointmentId, { documentId, documentNumber,
     'receipt.documentNumber': documentNumber,
     'receipt.documentType': documentType,
     'receipt.pdfUrl': pdfUrl ?? null,
+    'receipt.customerName': customerName ?? null,
+    'receipt.invoice4uClientId': clientId ?? null,
     'receipt.issuedAt': FieldValue.serverTimestamp(),
   });
 }

@@ -139,11 +139,16 @@ const issueReceipt = onCall({
     });
 
     // ---- 4a. Success (including idempotent-duplicate, e.g. Invoice4U code 134) ----
+    // customerName/clientId: audit snapshot only — apptData.name is the
+    // exact authoritative name resolveInvoice4uCustomer just used/synced
+    // above, so no extra lookup is needed here.
     await recordReceiptSuccess(appointmentId, {
       documentId: result.documentId,
       documentNumber: result.documentNumber,
       documentType: result.documentType ?? config.documentType,
       pdfUrl: result.pdfUrl,
+      customerName: apptData.name,
+      clientId,
     });
 
     return { status: 'issued', documentNumber: result.documentNumber, pdfUrl: result.pdfUrl };

@@ -242,7 +242,16 @@ async function getCustomerByExternalNumber(extNumber) {
     throw err;
   }
 
-  return { ID: result.ID };
+  // Returns the FULL Customer object (2026-08-24, customer-name-edit
+  // feature) — previously narrowed to { ID: result.ID } here, but a
+  // caller that needs to sync Name via UpdateCustomer requires the
+  // complete object to echo back unchanged (VERIFIED via a real,
+  // approved, no-op production UpdateCustomer call: echoing back every
+  // field caused zero side effects on any field other than the one
+  // intentionally changed — see resolveInvoice4uCustomer). Every existing
+  // caller only ever read `.ID` off this return value, so this is a
+  // strictly additive change to what's returned, not a breaking one.
+  return result;
 }
 
 /**
@@ -297,6 +306,110 @@ async function createCustomer({ name, extNumber }) {
   return result.ID;
 }
 
+// Comparison-only normalization — trim + collapse internal whitespace.
+// Never used to mutate the authoritative Firestore name itself, only to
+// decide whether an UpdateCustomer call is actually needed. Deliberately
+// no fuzzy matching and no case-folding (Hebrew has no case) — a real
+// difference beyond trivial whitespace must always trigger a sync.
+function normalizeNameForComparison(name) {
+  return String(name || '').trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Updates an existing Invoice4U customer — contract VERIFIED against a
+ * real, approved, no-op production call (2026-08-24): request is
+ * { cu: <full Customer object>, token }, response is
+ * { d: <full Customer object> } — the same "d"-direct pattern as every
+ * other endpoint on this service (no further nested
+ * "UpdateCustomerResult"/"UpdateCustomerResponse", despite that being the
+ * WSDL-documented response element name). Requires the FULL Customer
+ * object, not a sparse patch: echoing back an object fetched from
+ * GetCustomerByExternalNumber with only one field changed was verified to
+ * cause zero side effects on any other field (email/phone/address/etc. —
+ * all correctly preserved, byte-for-byte, in a real before/after
+ * comparison). Callers MUST pass the complete object, never a
+ * hand-constructed partial one.
+ *
+ * Validates strictly: Errors empty, AND the returned ID/ExtNumber/Name all
+ * match what was intended — never trusts a "success" that doesn't actually
+ * confirm the right customer received the right change. Any failure here
+ * (network, timeout, business error, malformed shape, or a mismatch on
+ * any of those three fields) throws — deliberately never swallowed by
+ * this function, so a stale Name can never silently reach a receipt.
+ */
+async function updateCustomer(customerObject) {
+  const res = await fetchInvoice4u('UpdateCustomer', { cu: customerObject });
+  const result = await parseInvoice4uResponse(res, {
+    path: 'UpdateCustomer',
+    resultInD: true,
+    extNumber: customerObject.ExtNumber,
+    validate: (r) => 'Errors' in r || 'ID' in r,
+  });
+
+  const errors = Array.isArray(result.Errors) ? result.Errors : [];
+  const isRealError = errors.length > 0;
+  if (isRealError) {
+    console.error('[invoice4uCustomer] UpdateCustomer returned a business-level error', {
+      extNumber: customerObject.ExtNumber, errors: errors.map(pickErrorFields),
+    });
+    const err = new Error(errors.map((e) => e.Error).join('; ') || 'Invoice4U UpdateCustomer returned an error');
+    err.code = 'CUSTOMER_ERROR';
+    err.invoice4uErrors = errors;
+    throw err;
+  }
+
+  if (String(result.ID) !== String(customerObject.ID)) {
+    console.error('[invoice4uCustomer] UpdateCustomer returned a mismatched ID', {
+      extNumber: customerObject.ExtNumber, expectedIdType: typeof customerObject.ID, returnedIdType: typeof result.ID,
+    });
+    const err = new Error('Invoice4U UpdateCustomer returned a mismatched ID');
+    err.code = 'CUSTOMER_INVALID_RESPONSE_SHAPE';
+    throw err;
+  }
+
+  if (String(result.ExtNumber) !== String(customerObject.ExtNumber)) {
+    console.error('[invoice4uCustomer] UpdateCustomer returned a mismatched ExtNumber', {
+      expectedExtNumberType: typeof customerObject.ExtNumber, returnedExtNumberType: typeof result.ExtNumber,
+    });
+    const err = new Error('Invoice4U UpdateCustomer returned a mismatched ExtNumber');
+    err.code = 'CUSTOMER_INVALID_RESPONSE_SHAPE';
+    throw err;
+  }
+
+  if (result.Name !== customerObject.Name) {
+    console.error('[invoice4uCustomer] UpdateCustomer did not confirm the intended Name change', {
+      extNumber: customerObject.ExtNumber,
+    });
+    const err = new Error('Invoice4U UpdateCustomer did not confirm the intended Name change');
+    err.code = 'CUSTOMER_INVALID_RESPONSE_SHAPE';
+    throw err;
+  }
+
+  return result;
+}
+
+/**
+ * Keeps an existing Invoice4U customer's Name in sync with the
+ * authoritative Firestore appointment name, BEFORE any receipt is created
+ * against it. Fail-closed by construction: this function never catches
+ * updateCustomer()'s errors — they propagate straight out of
+ * resolveInvoice4uCustomer exactly like every other CUSTOMER_* failure
+ * already does, so issueReceipt.js's existing catch block (never modified
+ * for this feature) already guarantees createReceipt is never reached and
+ * the receipt is marked failed, retry-safe — no new failure-handling
+ * mechanism needed.
+ *
+ * No-ops (never calls UpdateCustomer) when the names already match after
+ * comparison-only normalization — never sends an unnecessary write.
+ */
+async function syncCustomerNameIfNeeded(existing, authoritativeName) {
+  if (normalizeNameForComparison(existing.Name) === normalizeNameForComparison(authoritativeName)) {
+    return;
+  }
+  const updated = { ...existing, Name: authoritativeName };
+  await updateCustomer(updated);
+}
+
 /**
  * @param {{ name: string, phone: string, _mockCustomerScenario?: string }} req
  * @returns {Promise<{ clientId: number|string }>}
@@ -323,10 +436,17 @@ async function resolveInvoice4uCustomer(req) {
   // above getCustomerByExternalNumber's definition).
   let existing = await getCustomerByExternalNumber(extNumber);
   if (existing) {
+    // Keep Invoice4U's Name in sync with the authoritative Firestore name
+    // before this ClientID is ever handed to createReceipt — fail-closed:
+    // any sync failure throws here and never reaches createReceipt (see
+    // syncCustomerNameIfNeeded's own header comment).
+    await syncCustomerNameIfNeeded(existing, req.name);
     return { clientId: existing.ID };
   }
 
-  // 2. Not found — create.
+  // 2. Not found — create. (No follow-up UpdateCustomer needed here: a
+  // brand-new customer is created with the current, already-authoritative
+  // name in the same call.)
   try {
     const clientId = await createCustomer({ name: req.name, extNumber });
     return { clientId };
@@ -337,6 +457,7 @@ async function resolveInvoice4uCustomer(req) {
     // — never guess an ID.
     existing = await getCustomerByExternalNumber(extNumber);
     if (existing) {
+      await syncCustomerNameIfNeeded(existing, req.name);
       return { clientId: existing.ID };
     }
     console.error('[invoice4uCustomer] Duplicate-ExtNumber fallback lookup could not resolve the existing customer', { extNumber });

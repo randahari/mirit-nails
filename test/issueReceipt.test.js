@@ -137,6 +137,16 @@ test('10. success path: Firestore payment + receipt fields correct', async () =>
   assert.equal(data.receipt.apiIdentifier, id);
 });
 
+// ---- 10b: audit snapshot fields (2026-08-24, customer-name-edit feature) ----
+test('10b. success path stores receipt.customerName and receipt.invoice4uClientId as an audit snapshot', async () => {
+  const id = nextId('appt'); await seedAppointment(id, { name: 'לקוחה לדוגמה' });
+  const res = await callAsAdmin({ appointmentId: id, amount: 240, method: 'paybox', itemDescription: 'טיפול', _mockScenario: 'success' });
+  assert.equal(res.data.status, 'issued');
+  const data = await getApptDoc(id);
+  assert.equal(data.receipt.customerName, 'לקוחה לדוגמה');
+  assert.ok(data.receipt.invoice4uClientId, 'invoice4uClientId must be recorded on success');
+});
+
 // ---- 11: API failure ----
 test('11. API failure: rejected, receipt.status=failed, payment retained', async () => {
   const id = nextId('appt'); await seedAppointment(id);
