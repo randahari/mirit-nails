@@ -40,6 +40,57 @@ function isReceiptIssuanceEnabled() {
   return process.env.RECEIPT_ISSUANCE_ENABLED === 'true';
 }
 
+// ---- Past-appointment / forgotten-receipt recovery (2026-09) ----
+// The Cloud Functions runtime clock is UTC; a naive comparison against it
+// would misclassify an appointment near midnight Israel time (IST/IDT,
+// UTC+2/UTC+3) as the wrong calendar day. Intl.DateTimeFormat with an
+// explicit timeZone is the correct, dependency-free way to derive an
+// Israel calendar day from any Date — consistent with how the client
+// (always browser/Israel-local time) reasons about "today" everywhere
+// else in this app.
+const ISRAEL_TZ = 'Asia/Jerusalem';
+
+// 'en-CA' formats as YYYY-MM-DD — a string that sorts/compares correctly
+// with plain `<`/`>=`, so calendar-day comparison never needs a Date
+// object or a timezone-aware library at the comparison site itself.
+function israelCalendarKey(date) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: ISRAEL_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
+// 'en-GB' formats as DD/MM/YYYY — the Israeli display convention the
+// approved wording uses.
+function israelDisplayDate(date) {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: ISRAEL_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
+/**
+ * Backend-authoritative historical-receipt detection. NEVER trusts any
+ * client-supplied date/flag — the appointment's own stored `datetime` is
+ * the only signal, compared against the server's own current Israel
+ * calendar day (`now`, injectable for tests — defaults to the real clock).
+ *
+ * Deliberately does NOT use `payment.confirmedAt`: that field is set to
+ * "now" whenever beginReceiptAttempt runs (i.e. whenever this callable is
+ * invoked, same-day or not) — it is not, and was never claimed to be, a
+ * reliable historical payment-received timestamp. `appointment.datetime`
+ * (the treatment's own scheduled time) is the only trustworthy reference
+ * this application actually has — see investigation history.
+ *
+ * Returns the exact ExternalComments string for a historical appointment,
+ * or null for a same-day/future one (or one with no readable datetime at
+ * all — never guesses). Pure and deterministic given the same
+ * apptData.datetime and calendar day, so a retry always reproduces the
+ * identical text.
+ */
+function buildHistoricalExternalComments(apptData, now = new Date()) {
+  const apptDate = apptData && apptData.datetime && typeof apptData.datetime.toDate === 'function'
+    ? apptData.datetime.toDate()
+    : null;
+  if (!apptDate) return null;
+  if (israelCalendarKey(apptDate) >= israelCalendarKey(now)) return null; // today or future — normal flow
+  return `עבור טיפול שבוצע בתאריך ${israelDisplayDate(apptDate)}`;
+}
+
 const issueReceipt = onCall({
   // Only the secret for THIS deployment's environment — see above.
   secrets: [invoice4uApiToken],
@@ -124,6 +175,11 @@ const issueReceipt = onCall({
       _mockCustomerScenario,
     });
 
+    // Backend-derived only — see buildHistoricalExternalComments's own
+    // header comment. null for a normal same-day/future receipt, in which
+    // case createReceipt/invoice4uClient.js add nothing to the request.
+    const externalComments = buildHistoricalExternalComments(apptData);
+
     const result = await createReceipt({
       environment: getInvoice4uEnvironment(),
       documentType: config.documentType,
@@ -132,6 +188,7 @@ const issueReceipt = onCall({
       itemDescription,
       amount,
       paymentType,
+      externalComments,
       // TEST-ONLY: only has any effect when the server itself is running
       // with INVOICE4U_MOCK_MODE=true (Functions Emulator). See
       // invoice4uMock.js and invoice4uClient.js.
@@ -179,4 +236,8 @@ const issueReceipt = onCall({
   }
 });
 
-module.exports = { issueReceipt };
+// buildHistoricalExternalComments is additionally exported for direct,
+// fast, non-emulator unit testing of the date-boundary logic (same
+// rationale as phoneNormalization.js exporting its own pure helpers) —
+// never used by any other production module.
+module.exports = { issueReceipt, buildHistoricalExternalComments };

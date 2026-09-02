@@ -3498,23 +3498,34 @@ async function loadMiritAppts() {
   const list = document.getElementById('mirit-appts-list');
   list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink-mute)">טוענת...</div>';
   try {
-    const now = new Date(); now.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const f = window.miritApptFilter;
+
+    // Query-level lower bound: defaults to today (unchanged normal
+    // behavior — today → future, exactly as before). When Mirit explicitly
+    // picks a filter-from date, THAT becomes the actual query bound —
+    // including any past date, with no artificial historical cutoff.
+    // Previously this was hardcoded to "now" regardless of filter-from, so
+    // picking a past date silently returned nothing: the query had already
+    // discarded it before the (then purely client-side) filter ever ran.
+    let lowerBound = today;
+    if (f.dateFrom) {
+      const from = new Date(f.dateFrom); from.setHours(0,0,0,0);
+      lowerBound = from;
+    }
+
     let q = window._query(
       window._col(window._db,'appointments'),
-      window._where('datetime','>=',window._Timestamp.fromDate(now)),
+      window._where('datetime','>=',window._Timestamp.fromDate(lowerBound)),
       window._where('status','in',['confirmed','pending']),
       window._orderBy('datetime','asc')
     );
     const snap = await window._getDocs(q);
     let appts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
-    // Apply filters
-    const f = window.miritApptFilter;
+    // Apply remaining filters. dateFrom is now fully enforced by the query
+    // itself (lowerBound above) — no client-side re-filter needed for it.
     if (f.branch !== 'all') appts = appts.filter(a => a.branch === f.branch);
-    if (f.dateFrom) {
-      const from = new Date(f.dateFrom); from.setHours(0,0,0,0);
-      appts = appts.filter(a => a.datetime.toDate() >= from);
-    }
     if (f.dateTo) {
       const to = new Date(f.dateTo); to.setHours(23,59,59,999);
       appts = appts.filter(a => a.datetime.toDate() <= to);
@@ -3530,7 +3541,27 @@ async function loadMiritAppts() {
       const dateStr = dt.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'long'});
       const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
       const branch = a.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
-      return `<div class="appt-card" style="margin-bottom:10px">
+      // Past appointment = calendar date before today (local/Israel —
+      // same convention `today` above already uses throughout this admin
+      // UI). Reschedule/cancel/reminder-style WhatsApp make no sense for
+      // something that already happened, so those actions are omitted
+      // entirely for a past card — only viewing details and the existing
+      // receipt action remain, exactly as approved.
+      const dayOfAppt = new Date(dt); dayOfAppt.setHours(0,0,0,0);
+      const isPast = dayOfAppt < today;
+      const actions = isPast
+        ? receiptActionMarkup(a)
+        : `<div class="icon-btn" onclick="openWA('${a.phone}','היי ${a.name}!')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
+          </div>
+          <div class="icon-btn" style="border-color:var(--rose-gold);color:var(--rose-gold-dark)" onclick="miritEditAppt('${a.id}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
+          <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+          ${receiptActionMarkup(a)}`;
+      return `<div class="appt-card" style="margin-bottom:10px${isPast ? ';opacity:.75' : ''}">
         <div class="appt-time">
           <div class="h">${timeStr}</div>
           <div class="d">${dt.getDate()}/${dt.getMonth()+1}</div>
@@ -3541,16 +3572,7 @@ async function loadMiritAppts() {
           <div class="appt-service" style="font-size:11px;color:var(--ink-mute)">${dateStr} · ${a.duration} דק'${a.note ? ' · '+a.note : ''}</div>
         </div>
         <div class="appt-actions">
-          <div class="icon-btn" onclick="openWA('${a.phone}','היי ${a.name}!')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 15.9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 5h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 12.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 19.92z"/></svg>
-          </div>
-          <div class="icon-btn" style="border-color:var(--rose-gold);color:var(--rose-gold-dark)" onclick="miritEditAppt('${a.id}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </div>
-          <div class="icon-btn" style="border-color:var(--danger);color:var(--danger)" onclick="miritCancelAppt('${a.id}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </div>
-          ${receiptActionMarkup(a)}
+          ${actions}
         </div>
       </div>`;
     }).join('');

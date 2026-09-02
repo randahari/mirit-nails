@@ -57,10 +57,29 @@ service cloud.firestore {
       // `payment`, `receipt`, and now `name` untouchable except by an
       // admin (payment/receipt: server-only, via the Admin SDK, which
       // bypasses these rules entirely).
+      //
+      // `datetime` post-issuance immutability (2026-09, past-appointment
+      // receipt-recovery feature): once receipt.status is already 'issued'
+      // (the pre-write state — resource.data, never request.resource.data,
+      // which would let the write itself smuggle a fresh status through),
+      // `datetime` can no longer be changed by any client write. An issued
+      // Invoice4U document's ExternalComments permanently references this
+      // appointment's datetime — it must never later disagree with what
+      // Firestore says happened. Deliberately NOT a blanket "no editing
+      // past appointments" rule: an appointment with no receipt field yet,
+      // or one whose last attempt failed, remains fully editable, so
+      // ordinary future rescheduling and forgotten-receipt recovery (fixing
+      // a wrong date before finally issuing) both keep working exactly as
+      // before. `.get(field, default)` is required here, not dot-access —
+      // most appointments have no `receipt` field at all, and Rules throw
+      // on missing-key dot-access rather than returning null.
       allow update: if !request.resource.data.diff(resource.data)
                           .affectedKeys().hasAny(['payment', 'receipt'])
                     && (!request.resource.data.diff(resource.data)
-                          .affectedKeys().hasAny(['name']) || isAdmin());
+                          .affectedKeys().hasAny(['name']) || isAdmin())
+                    && (!request.resource.data.diff(resource.data)
+                          .affectedKeys().hasAny(['datetime'])
+                        || resource.data.get('receipt', {}).get('status', null) != 'issued');
 
       // Deletion (not used by any current flow) is admin-only.
       allow delete: if isAdmin();

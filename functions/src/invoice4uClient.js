@@ -136,6 +136,17 @@ function toWcfJsonDate(date) {
  *   itemDescription: string,
  *   amount: number,
  *   paymentType: number,
+ *   externalComments?: string|null,  // Past-appointment/forgotten-receipt
+ *                              // recovery feature ONLY. Printed on the
+ *                              // document per Invoice4U's own docs
+ *                              // ("Comments printed on the document") —
+ *                              // VERIFIED, not inferred (see investigation
+ *                              // history). Set ONLY by issueReceipt.js when
+ *                              // the appointment is genuinely historical;
+ *                              // omitted/falsy for a normal same-day
+ *                              // receipt, in which case this field is not
+ *                              // added to the request at all — the normal
+ *                              // request shape is completely unchanged.
  *   _mockScenario?: string,  // TEST-ONLY — see invoice4uMock.js header
  * }} req
  */
@@ -181,8 +192,17 @@ async function createReceipt(req) {
       ApiIdentifier: req.apiIdentifier,
       ClientID: req.clientId,
       Items: [{ Name: req.itemDescription, Quantity: 1, Price: req.amount }],
+      // Always the current moment — never backdated, historical case or
+      // not. The historical-recovery feature never introduces a
+      // DocumentDate/backdating field; the document is always issued
+      // "now", exactly as before this feature existed.
       Payments: [{ PaymentType: req.paymentType, Amount: req.amount, Date: toWcfJsonDate(new Date()) }],
       Currency: 'ILS',
+      // Only present for a genuinely historical appointment (see
+      // issueReceipt.js) — a normal same-day receipt never has this key at
+      // all, not even as null/empty, so the request body it produces is
+      // byte-for-byte identical to before this feature existed.
+      ...(req.externalComments ? { ExternalComments: req.externalComments } : {}),
     },
   };
 

@@ -183,6 +183,91 @@ test('existing self-cancel / reschedule flows (no `name` touched) remain unaffec
   await assertSucceeds(admin().doc('appointments/appt1').update({ services: 'פדיקור לק ג\'ל', duration: 75 }));
 });
 
+// ---- 10. `datetime` post-issuance immutability (2026-09, past-appointment
+// receipt-recovery feature) ----
+test('admin CANNOT change datetime when receipt.status === "issued"', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc('appointments/appt-issued').set({
+      name: 'לקוחה', phone: '972500000001', branch: 'rehovot', services: "לק ג'ל", duration: 45, status: 'confirmed',
+      receipt: { status: 'issued', documentNumber: 30001 },
+    });
+  });
+  await assertFails(
+    admin().doc('appointments/appt-issued').update({ datetime: new Date('2026-09-05T10:00:00Z') })
+  );
+});
+
+test('non-admin / unauthenticated client also CANNOT change datetime when receipt.status === "issued"', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc('appointments/appt-issued2').set({
+      name: 'לקוחה', phone: '972500000002', branch: 'rehovot', services: "לק ג'ל", duration: 45, status: 'confirmed',
+      receipt: { status: 'issued', documentNumber: 30002 },
+    });
+  });
+  await assertFails(
+    anon().doc('appointments/appt-issued2').update({ datetime: new Date('2026-09-05T10:00:00Z') })
+  );
+  await assertFails(
+    loggedInNonAdmin().doc('appointments/appt-issued2').update({ datetime: new Date('2026-09-05T10:00:00Z') })
+  );
+});
+
+test('admin CAN change datetime when receipt.status === "failed" — a forgotten-receipt recovery can still correct a wrong date before finally issuing', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc('appointments/appt-failed').set({
+      name: 'לקוחה', phone: '972500000003', branch: 'rehovot', services: "לק ג'ל", duration: 45, status: 'confirmed',
+      receipt: { status: 'failed', lastError: 'x' },
+    });
+  });
+  await assertSucceeds(
+    admin().doc('appointments/appt-failed').update({ datetime: new Date('2026-09-05T10:00:00Z') })
+  );
+});
+
+test('admin CAN change datetime when the appointment has no `receipt` field at all — the common case', async () => {
+  // appt1 (seeded in beforeEach) has no receipt field.
+  await assertSucceeds(
+    admin().doc('appointments/appt1').update({ datetime: new Date('2026-09-05T10:00:00Z') })
+  );
+});
+
+test('normal future reschedule (datetime + services + duration + note, no issued receipt) still succeeds end to end', async () => {
+  await assertSucceeds(
+    admin().doc('appointments/appt1').update({
+      datetime: new Date('2026-09-10T10:00:00Z'),
+      services: "פדיקור לק ג'ל",
+      duration: 75,
+      note: 'עדכון תור',
+    })
+  );
+});
+
+test('a bundled write (datetime + an otherwise-permitted field) is still fully denied when receipt.status === "issued"', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc('appointments/appt-issued3').set({
+      name: 'לקוחה', phone: '972500000004', branch: 'rehovot', services: "לק ג'ל", duration: 45, status: 'confirmed',
+      receipt: { status: 'issued', documentNumber: 30003 },
+    });
+  });
+  await assertFails(
+    admin().doc('appointments/appt-issued3').update({ datetime: new Date('2026-09-05T10:00:00Z'), note: 'הערה' })
+  );
+});
+
+test('existing payment/receipt protections remain unchanged after the datetime rule addition', async () => {
+  await assertFails(
+    anon().doc('appointments/appt1').update({
+      payment: { amount: 120, method: 'cash', confirmedAt: new Date(), confirmedByUid: 'x' },
+    })
+  );
+  await assertFails(admin().doc('appointments/appt1').update({ receipt: { status: 'issued' } }));
+});
+
+test('existing name-edit admin protection remains unchanged after the datetime rule addition', async () => {
+  await assertSucceeds(admin().doc('appointments/appt1').update({ name: 'שם מתוקן' }));
+  await assertFails(anon().doc('appointments/appt1').update({ name: 'שם מזויף' }));
+});
+
 // ---- 8. Cloud Functions (Admin SDK) note ----
 // The Admin SDK used inside Cloud Functions bypasses Security Rules entirely
 // by design (this is documented Firebase behavior, not something these

@@ -90,3 +90,50 @@ test('other request fields are unaffected by the date-format fix', async () => {
     assert.equal(body.doc.Currency, 'ILS');
   });
 });
+
+// ---- ExternalComments — past-appointment/forgotten-receipt recovery ----
+// Contract VERIFIED against Invoice4U's own official documentation
+// ("Comments printed on the document") — see investigation history.
+test('normal (same-day) receipt: no externalComments passed → ExternalComments key is absent entirely, request body otherwise byte-identical to before this feature', async () => {
+  const successBody = { d: { ID: 'doc-3', DocumentNumber: 1003, DocumentType: 2, PrintOriginalPDFLink: null, Errors: [] } };
+
+  await withCapturedRequest(successBody, async (getCapturedBody) => {
+    await createReceipt({ ...baseReq }); // no externalComments field at all, exactly like every pre-existing caller
+    const body = getCapturedBody();
+
+    assert.equal('ExternalComments' in body.doc, false, 'a normal receipt must never carry ExternalComments, not even as null/empty');
+    assert.deepEqual(Object.keys(body.doc), ['DocumentType', 'ApiIdentifier', 'ClientID', 'Items', 'Payments', 'Currency'], 'the doc object shape must be exactly what it was before this feature');
+  });
+});
+
+test('normal receipt: explicitly passing externalComments: null also omits the key (defensive — issueReceipt.js always passes null for a same-day receipt)', async () => {
+  const successBody = { d: { ID: 'doc-3b', DocumentNumber: 1003, DocumentType: 2, PrintOriginalPDFLink: null, Errors: [] } };
+
+  await withCapturedRequest(successBody, async (getCapturedBody) => {
+    await createReceipt({ ...baseReq, externalComments: null });
+    const body = getCapturedBody();
+    assert.equal('ExternalComments' in body.doc, false);
+  });
+});
+
+test('historical receipt: externalComments is sent as ExternalComments exactly, with the approved wording, and nothing else in the payload changes', async () => {
+  const successBody = { d: { ID: 'doc-4', DocumentNumber: 1004, DocumentType: 2, PrintOriginalPDFLink: null, Errors: [] } };
+  const note = 'עבור טיפול שבוצע בתאריך 01/09/2026';
+
+  await withCapturedRequest(successBody, async (getCapturedBody) => {
+    await createReceipt({ ...baseReq, externalComments: note });
+    const body = getCapturedBody();
+
+    assert.equal(body.doc.ExternalComments, note);
+    // No backdating field of any kind was introduced — Payments[0].Date is
+    // still the current-issuance-time WCF format, never the historical date.
+    assert.match(body.doc.Payments[0].Date, /^\/Date\(\d+\)\/$/);
+    assert.equal(body.doc.DocumentDate, undefined, 'no DocumentDate/backdating field must ever be introduced');
+    assert.equal(body.doc.IssueDate, undefined, 'no IssueDate override must ever be introduced — the document is always issued "now"');
+    // Every other field remains exactly as the normal-flow test above.
+    assert.equal(body.doc.DocumentType, 2);
+    assert.equal(body.doc.ApiIdentifier, 'appt-date-format-test');
+    assert.equal(body.doc.ClientID, 12345);
+    assert.deepEqual(body.doc.Items, [{ Name: 'Manicure', Quantity: 1, Price: 140 }]);
+  });
+});

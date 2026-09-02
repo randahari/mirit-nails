@@ -11,6 +11,7 @@
     "test:receipt": "node --test --test-concurrency=1 test/issueReceipt.test.js",
     "test:receiptstate": "node --test test/receiptState.test.js",
     "test:gate": "node --test --test-concurrency=1 test/receiptIssuanceGate.test.js",
-    "test:nameedit": "node --test --test-concurrency=1 test/customerNameEdit.test.js"
+    "test:nameedit": "node --test --test-concurrency=1 test/customerNameEdit.test.js",
+    "test:apptquery": "node --test --test-concurrency=1 test/miritApptsQuery.test.js"
   }
 }

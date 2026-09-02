@@ -147,6 +147,29 @@ test('10b. success path stores receipt.customerName and receipt.invoice4uClientI
   assert.ok(data.receipt.invoice4uClientId, 'invoice4uClientId must be recorded on success');
 });
 
+// ---- 10c: past-appointment receipt recovery (2026-09) ----
+test('10c. past appointment (datetime a month ago): receipt issues through the exact same pipeline, same ApiIdentifier, and a retry never creates a duplicate', async () => {
+  const id = nextId('appt-historical');
+  const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+  await seedAppointment(id, { name: 'לקוחה היסטורית', datetime: admin.firestore.Timestamp.fromDate(oneMonthAgo) });
+
+  const res = await callAsAdmin({ appointmentId: id, amount: 180, method: 'cash', itemDescription: 'טיפול', _mockScenario: 'success' });
+  assert.equal(res.data.status, 'issued');
+
+  const data = await getApptDoc(id);
+  assert.equal(data.receipt.status, 'issued');
+  assert.equal(data.receipt.apiIdentifier, id, 'ApiIdentifier is still just the appointment id — no special historical identity');
+  assert.ok(data.receipt.documentId);
+  assert.equal(data.receipt.customerName, 'לקוחה היסטורית');
+  assert.ok(data.receipt.invoice4uClientId);
+
+  // Retry (already-issued short-circuit) — proves opening a past
+  // appointment again can never create a second receipt.
+  const retry = await callAsAdmin({ appointmentId: id, amount: 180, method: 'cash', itemDescription: 'טיפול', _mockScenario: 'success' });
+  assert.equal(retry.data.status, 'issued');
+  assert.equal(retry.data.documentNumber, res.data.documentNumber, 'retrying a past appointment must return the SAME document, never a new one');
+});
+
 // ---- 11: API failure ----
 test('11. API failure: rejected, receipt.status=failed, payment retained', async () => {
   const id = nextId('appt'); await seedAppointment(id);
