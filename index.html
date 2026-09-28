@@ -2726,7 +2726,25 @@ window.returnToWelcome = function() {
 };
 
 // ===== SUBMIT BOOKING =====
+let bookingSubmissionInProgress = false;
+
 window.submitBooking = async function() {
+  if (bookingSubmissionInProgress) return;
+
+  const submitBtn = document.getElementById('details-submit-btn');
+  const originalSubmitHtml = submitBtn.innerHTML;
+  bookingSubmissionInProgress = true;
+  submitBtn.style.opacity = '0.5';
+  submitBtn.style.pointerEvents = 'none';
+  submitBtn.textContent = 'שולחת בקשת תור...';
+
+  const unlockBookingSubmission = () => {
+    bookingSubmissionInProgress = false;
+    submitBtn.innerHTML = originalSubmitHtml;
+    submitBtn.style.opacity = '1';
+    submitBtn.style.pointerEvents = 'all';
+  };
+
   const name = document.getElementById('input-name').value.trim();
   const phoneRaw = document.getElementById('input-phone').value.trim();
   const phone = normalizePhoneForStorage(phoneRaw);
@@ -2742,6 +2760,7 @@ window.submitBooking = async function() {
   if (!slotCheck.ok) {
     showToast(slotCheck.reason);
     if (state.selectedDate) loadTimeSlots(state.selectedDate); // רענון השעות הפנויות
+    unlockBookingSubmission();
     return;
   }
 
@@ -2829,6 +2848,7 @@ window.submitBooking = async function() {
     state.screenHistory = [];
   } catch(e) {
     console.error(e);
+    unlockBookingSubmission();
     showToast('שגיאה בשמירת התור. נסי שוב.');
   }
 };
