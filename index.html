@@ -1588,7 +1588,7 @@ html,body{height:100%;overflow:hidden;font-family:'Heebo',sans-serif;background:
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, Timestamp, doc, getDoc, setDoc, updateDoc, deleteDoc, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, Timestamp, doc, getDoc, setDoc, updateDoc, deleteDoc, runTransaction, connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, connectAuthEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 
@@ -1624,6 +1624,7 @@ if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
 window._db = db;
 window._col = collection;
 window._addDoc = addDoc;
+window._runTransaction = runTransaction;
 window._getDocs = getDocs;
 window._query = query;
 window._where = where;
@@ -1649,6 +1650,7 @@ window._fbReady = true;
 document.dispatchEvent(new Event('fbReady'));
 </script>
 
+<script src="booking-persistence.js"></script>
 <script>
 // ===== FIX: Viewport height on mobile (prevents keyboard shrink bug) =====
 (function(){
@@ -2289,46 +2291,51 @@ window.checkManualForm = function() {
   btn.style.pointerEvents = ok ? 'all' : 'none';
 };
 
+let manualBookingSubmissionInProgress = false;
 window.submitManualBooking = async function() {
-  const name = document.getElementById('mb-name').value.trim();
-  const phoneRaw = document.getElementById('mb-phone').value.trim();
-  const phone = normalizePhoneForStorage(phoneRaw);
-  const note = document.getElementById('mb-note').value.trim();
-  const ms = window._manualState;
+  if (manualBookingSubmissionInProgress) return;
+  manualBookingSubmissionInProgress = true;
+  let savedBooking = null;
   const submitBtn = document.getElementById('mb-submit');
-  submitBtn.style.opacity = '0.5';
-  submitBtn.style.pointerEvents = 'none';
-  submitBtn.textContent = 'יוצרת תור...';
-
-  const [h, m] = ms.selectedTime.split(':').map(Number);
-  const dt = new Date(ms.selectedDate);
-  dt.setHours(h, m, 0, 0);
-
-  const booking = {
-    name,
-    phone,
-    phoneRaw,
-    branch: ms.branch,
-    services: ms.services.join(' + '),
-    duration: ms.totalDuration,
-    datetime: window._Timestamp.fromDate(dt),
-    chips: [],
-    note,
-    status: 'confirmed',
-    cancellationPolicyAccepted: true,
-    cancellationPolicyAcceptedAt: window._Timestamp.now(),
-    createdByMirit: true,
-    eventId: null,
-    reminderSent: false,
-    createdAt: window._Timestamp.now()
-  };
-
   try {
-    const docRef = await window._addDoc(window._col(window._db,'appointments'), booking);
+    const name = document.getElementById('mb-name').value.trim();
+    const phoneRaw = document.getElementById('mb-phone').value.trim();
+    const phone = normalizePhoneForStorage(phoneRaw);
+    const note = document.getElementById('mb-note').value.trim();
+    const ms = window._manualState;
+    submitBtn.style.opacity = '0.5';
+    submitBtn.style.pointerEvents = 'none';
+    submitBtn.textContent = 'יוצרת תור...';
 
-    // Send to Make → Google Calendar (same webhook as customer flow)
-    try {
-      const branchFull = ms.branch === 'rehovot' ? 'רחובות - חיים קאופמן 8' : 'מודיעין - קייזר סנטר';
+    const [h, m] = ms.selectedTime.split(':').map(Number);
+    const dt = new Date(ms.selectedDate);
+    dt.setHours(h, m, 0, 0);
+
+    const booking = {
+      name,
+      phone,
+      phoneRaw,
+      branch: ms.branch,
+      services: ms.services.join(' + '),
+      duration: ms.totalDuration,
+      datetime: window._Timestamp.fromDate(dt),
+      chips: [],
+      note,
+      status: 'confirmed',
+      cancellationPolicyAccepted: true,
+      cancellationPolicyAcceptedAt: window._Timestamp.now(),
+      createdByMirit: true,
+      eventId: null,
+      reminderSent: false,
+      createdAt: window._Timestamp.now()
+    };
+
+    savedBooking = await saveBookingOnce(booking);
+    const docRef = { id: savedBooking.id };
+
+    // Only the transaction winner sends the existing, unchanged Make payload.
+    if (savedBooking.created) try {
+      const branchFull = booking.branch === 'rehovot' ? 'רחובות - חיים קאופמן 8' : 'מודיעין - קייזר סנטר';
       const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
       const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
       fetch(WEBHOOK_BOOKING, {
@@ -2336,8 +2343,8 @@ window.submitManualBooking = async function() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name, phone, branch: branchFull,
-          services: ms.services.join(' + '),
-          duration: ms.totalDuration,
+          services: booking.services,
+          duration: booking.duration,
           date: dateStr, time: timeStr,
           datetime_iso: dt.toISOString(),
           appointment_id: docRef.id,
@@ -2359,17 +2366,19 @@ window.submitManualBooking = async function() {
 
     // WhatsApp to customer handled by Make (Wappi) if needed
 
-    showToast('התור נקבע ונשלחה הודעה ללקוחה ✓');
+    showToast(savedBooking.created ? 'התור נקבע ✓' : 'התור כבר קיים ✓');
     submitBtn.textContent = 'קבעי תור';
     closeManualBooking();
     // Refresh dashboard
     setTimeout(() => loadMiritDashboard(), 400);
   } catch(e) {
     console.error(e);
+    showToast(savedBooking ? 'התור נשמר. ניתן לראות אותו ביומן.' : 'שגיאה ביצירת התור');
+  } finally {
+    manualBookingSubmissionInProgress = false;
     submitBtn.style.opacity = '1';
     submitBtn.style.pointerEvents = 'all';
-    submitBtn.textContent = 'נסי שוב';
-    showToast('שגיאה ביצירת התור');
+    submitBtn.textContent = 'קבעי תור';
   }
 };
 
@@ -2725,6 +2734,17 @@ window.returnToWelcome = function() {
   }
 };
 
+// Shared persistence for both booking flows. Construct lazily after Firebase is ready.
+let bookingStore;
+function saveBookingOnce(booking) {
+  if (!bookingStore) bookingStore = createBookingStore({
+    db: window._db, crypto: window.crypto, normalizePhone: normalizePhoneForStorage,
+    collection: window._col, query: window._query, where: window._where,
+    getDocs: window._getDocs, doc: window._doc, runTransaction: window._runTransaction
+  });
+  return bookingStore.save(booking);
+}
+
 // ===== SUBMIT BOOKING =====
 let bookingSubmissionInProgress = false;
 
@@ -2745,51 +2765,50 @@ window.submitBooking = async function() {
     submitBtn.style.pointerEvents = 'all';
   };
 
-  const name = document.getElementById('input-name').value.trim();
-  const phoneRaw = document.getElementById('input-phone').value.trim();
-  const phone = normalizePhoneForStorage(phoneRaw);
-  const note = document.getElementById('input-note').value.trim();
-  const chips = state.chips.slice();
-
-  const [h, m] = state.selectedTime.split(':').map(Number);
-  const dt = new Date(state.selectedDate);
-  dt.setHours(h, m, 0, 0);
-
-  // הגנה שנייה — בדיקה חוזרת שהשעה עדיין תקפה (שעות עבודה + הפסקות + חסימות)
-  const slotCheck = await validateSlotBookable(dt, state.branch, state.totalDuration);
-  if (!slotCheck.ok) {
-    showToast(slotCheck.reason);
-    if (state.selectedDate) loadTimeSlots(state.selectedDate); // רענון השעות הפנויות
-    unlockBookingSubmission();
-    return;
-  }
-
-  const booking = {
-    name,
-    phone,
-    phoneRaw, // keep original for display
-    branch: state.branch,
-    services: state.services.join(' + '),
-    duration: Number(state.totalDuration),
-    datetime: window._Timestamp.fromDate(dt),
-    chips,
-    note,
-    status: 'confirmed',
-    cancellationPolicyAccepted: true,
-    cancellationPolicyAcceptedAt: window._Timestamp.now(),
-    eventId: null,
-    reminderSent: false,
-    createdAt: window._Timestamp.now()
-  };
-
+  let savedBooking = null;
   try {
-    const docRef = await window._addDoc(window._col(window._db,'appointments'), booking);
-    booking._id = docRef.id;
-    state.lastBooking = { ...booking, dt };
+    const name = document.getElementById('input-name').value.trim();
+    const phoneRaw = document.getElementById('input-phone').value.trim();
+    const phone = normalizePhoneForStorage(phoneRaw);
+    const note = document.getElementById('input-note').value.trim();
+    const chips = state.chips.slice();
 
-    // Send to Make → Google Calendar (Make returns eventId in response, we save to Firestore)
-    try {
-      const branch = state.branch === 'rehovot' ? 'רחובות - חיים קאופמן 8' : 'מודיעין - קייזר סנטר';
+    const [h, m] = state.selectedTime.split(':').map(Number);
+    const dt = new Date(state.selectedDate);
+    dt.setHours(h, m, 0, 0);
+
+    const booking = {
+      name,
+      phone,
+      phoneRaw, // keep original for display
+      branch: state.branch,
+      services: state.services.join(' + '),
+      duration: Number(state.totalDuration),
+      datetime: window._Timestamp.fromDate(dt),
+      chips,
+      note,
+      status: 'confirmed',
+      cancellationPolicyAccepted: true,
+      cancellationPolicyAcceptedAt: window._Timestamp.now(),
+      eventId: null,
+      reminderSent: false,
+      createdAt: window._Timestamp.now()
+    };
+
+    // Validate the captured selection, even if the user navigates while waiting.
+    const slotCheck = await validateSlotBookable(dt, booking.branch, booking.duration);
+    if (!slotCheck.ok) {
+      showToast(slotCheck.reason);
+      if (state.selectedDate) loadTimeSlots(state.selectedDate);
+      return;
+    }
+    savedBooking = await saveBookingOnce(booking);
+    const docRef = { id: savedBooking.id };
+    state.lastBooking = { ...savedBooking.booking, _id: docRef.id, dt };
+
+    // Only the transaction winner sends the existing, unchanged Make payload.
+    if (savedBooking.created) try {
+      const branch = booking.branch === 'rehovot' ? 'רחובות - חיים קאופמן 8' : 'מודיעין - קייזר סנטר';
       const dateStr = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
       const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
       fetch(WEBHOOK_BOOKING, {
@@ -2799,8 +2818,8 @@ window.submitBooking = async function() {
           name,
           phone,
           branch,
-          services: state.services.join(' + '),
-          duration: state.totalDuration,
+          services: booking.services,
+          duration: booking.duration,
           date: dateStr,
           time: timeStr,
           datetime_iso: dt.toISOString(),
@@ -2823,22 +2842,24 @@ window.submitBooking = async function() {
     } catch(e) {}
 
     // Save customer data
-    localStorage.setItem('customerData', JSON.stringify({ name, phone }));
+    try { localStorage.setItem('customerData', JSON.stringify({ name, phone })); } catch (e) {
+      console.warn('Customer preferences could not be stored', e);
+    }
 
 // WhatsApp to Mirit is handled by Make (Wappi) via WEBHOOK_BOOKING above
-    const branch = state.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
+    const branch = booking.branch === 'rehovot' ? 'רחובות' : 'מודיעין';
     const timeStr = dt.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
     // Show success screen
     const dateStrShort = dt.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
     document.getElementById('success-summary').innerHTML = `
       <div class="success-detail">📍 ${branch}</div>
       <div class="success-meta" style="margin-bottom:8px">${dateStrShort} · ${timeStr}</div>
-      <div class="success-detail">💅 ${state.services.join(' + ')}</div>
-      <div class="success-meta">${state.totalDuration} דקות</div>`;
+      <div class="success-detail">💅 ${String(savedBooking.booking.services).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</div>
+      <div class="success-meta">${Number(savedBooking.booking.duration)} דקות</div>`;
 
     // Waze buttons
-    const wazeAddr = state.branch === 'rehovot' ? 'חיים קאופמן 8, רחובות' : 'קייזר סנטר, מודיעין';
-    const wazeLabel = state.branch === 'rehovot' ? 'רחובות · חיים קאופמן 8' : 'מודיעין · קייזר סנטר';
+    const wazeAddr = booking.branch === 'rehovot' ? 'חיים קאופמן 8, רחובות' : 'קייזר סנטר, מודיעין';
+    const wazeLabel = booking.branch === 'rehovot' ? 'רחובות · חיים קאופמן 8' : 'מודיעין · קייזר סנטר';
     document.getElementById('success-waze-btns').innerHTML = `
       <button class="btn" style="background:var(--rose-blush);color:var(--rose-gold-dark);border:1px solid var(--rose-gold-light);font-size:14px;padding:14px" onclick="openWaze('${wazeAddr}')">
         📍 נווטי ל${wazeLabel}
@@ -2848,8 +2869,9 @@ window.submitBooking = async function() {
     state.screenHistory = [];
   } catch(e) {
     console.error(e);
+    showToast(savedBooking ? 'התור נשמר. ניתן לראות אותו בתורים שלי.' : 'שגיאה בשמירת התור. נסי שוב.');
+  } finally {
     unlockBookingSubmission();
-    showToast('שגיאה בשמירת התור. נסי שוב.');
   }
 };
 
