@@ -3496,7 +3496,7 @@ window.sendAllReminders = async function() {
 
       const res = await fetch('https://wappi.pro/api/sync/message/send?profile_id=e4a694b6-eea0', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': '4172a77c1c623d8a9415c2a47f8fc5ecfde30549' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': '881a18c4a1eef5a825271c04b39dd9281cd4db3b' },
         body: JSON.stringify({ recipient: phoneToSend, body: msg })
       });
       if (res.ok) {
