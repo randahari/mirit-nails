@@ -1,8 +1,8 @@
 'use strict';
 
-const { randomUUID } = require('node:crypto');
+const { createHmac, randomUUID } = require('node:crypto');
 
-const SCENARIO_URL = 'https://eu1.make.com/api/v2/scenarios/8591093/run';
+const MAKE_WEBHOOK = /^https:\/\/hook\.eu1\.make\.com\/[a-z0-9]+$/;
 const EVENT_ID = /^[A-Za-z0-9_-]{5,1024}$/;
 const LOCK_DURATION_MS = 2 * 60_000;
 const TIME_ZONE = 'Asia/Jerusalem';
@@ -33,35 +33,39 @@ function readAppointment(snapshot, edit) {
   return appt;
 }
 
-async function updateCalendar(token, appt, edit, fetchImpl) {
+async function updateCalendar(calendar, appt, edit, fetchImpl) {
   const start = new Date(edit.start);
   const end = new Date(start.getTime() + edit.duration * 60_000);
-  const response = await fetchImpl(SCENARIO_URL, {
+  const patch = JSON.stringify({
+    start: { dateTime: start.toISOString(), timeZone: TIME_ZONE },
+    end: { dateTime: end.toISOString(), timeZone: TIME_ZONE },
+    summary: (appt.name || '') + edit.services
+  });
+  const sentAt = String(Math.floor(Date.now() / 1000));
+  const signature = createHmac('sha256', calendar.signingKey)
+    .update([sentAt, appt.eventId, patch].join('|'))
+    .digest('hex');
+
+  const response = await fetchImpl(calendar.webhookUrl, {
     method: 'POST',
-    headers: { Authorization: 'Token ' + token, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     signal: AbortSignal.timeout(45_000),
     body: JSON.stringify({
-      responsive: true,
-      data: {
-        event_id: appt.eventId,
-        calendar_patch: JSON.stringify({
-          start: { dateTime: start.toISOString(), timeZone: TIME_ZONE },
-          end: { dateTime: end.toISOString(), timeZone: TIME_ZONE },
-          summary: (appt.name || '') + edit.services
-        })
-      }
+      calendar_edit: 'update',
+      calendar_event_id: appt.eventId,
+      calendar_sent_at: sentAt,
+      calendar_patch: patch,
+      calendar_signature: signature
     })
   });
   if (!response.ok) throw new Error('Make HTTP ' + response.status);
   const result = await response.json();
-  const output = result.outputs ?? result.output;
-  if (Number(result.status) !== 1 || Number(output?.calendar_status) !== 200 ||
-      output.event_id !== appt.eventId) {
+  if (result?.status !== 'updated' || result.event_id !== appt.eventId) {
     throw new Error('Calendar update was not confirmed');
   }
 }
 
-async function rescheduleAppointment(request, { db, token, fetchImpl = fetch }) {
+async function rescheduleAppointment(request, { db, calendar, fetchImpl = fetch }) {
   if (request.auth?.token.admin !== true) {
     throw new AppointmentEditError('permission-denied', 'admin-required');
   }
@@ -76,7 +80,10 @@ async function rescheduleAppointment(request, { db, token, fetchImpl = fetch }) 
       typeof edit.note !== 'string' || edit.note.length > 5000) {
     throw new AppointmentEditError('invalid-argument', 'invalid-edit');
   }
-  if (!token) throw new AppointmentEditError('unavailable', 'calendar-unavailable');
+  if (typeof calendar?.signingKey !== 'string' || calendar.signingKey.length < 32 ||
+      typeof calendar.webhookUrl !== 'string' || !MAKE_WEBHOOK.test(calendar.webhookUrl)) {
+    throw new AppointmentEditError('unavailable', 'calendar-unavailable');
+  }
 
   const apptRef = db.doc('appointments/' + edit.appointmentId);
   const lockRef = db.doc('appointment_edit_locks/' + edit.appointmentId);
@@ -95,7 +102,7 @@ async function rescheduleAppointment(request, { db, token, fetchImpl = fetch }) 
   });
 
   try {
-    await updateCalendar(token, appt, edit, fetchImpl);
+    await updateCalendar(calendar, appt, edit, fetchImpl);
   } catch {
     // Make may finish after a timeout. Keep the lease until it expires so
     // another edit does not immediately race an update with an unknown outcome.

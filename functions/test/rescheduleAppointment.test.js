@@ -2,8 +2,13 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { createHmac } = require('node:crypto');
 const { rescheduleAppointment } = require('../src/rescheduleAppointment');
 
+const calendar = {
+  webhookUrl: 'https://hook.eu1.make.com/testfixture',
+  signingKey: 'test-only-key-with-at-least-thirty-two-characters'
+};
 const eventId = 'fixtureevent00';
 const previousStart = Date.parse('2026-11-16T08:00:00.000Z');
 const request = {
@@ -50,20 +55,22 @@ function fixture(fields = {}) {
 
 const confirmed = (id = eventId) => ({
   ok: true,
-  json: async () => ({ status: 1, outputs: { calendar_status: 200, event_id: id } })
+  json: async () => ({ status: 'updated', event_id: id })
 });
 
 test('updates the same event, then saves the corresponding time and service in Firestore', async () => {
   const { appointment, db, records } = fixture();
   const result = await rescheduleAppointment(request, {
-    db, token: 'test-token',
+    db, calendar,
     fetchImpl: async (url, options) => {
-      assert.match(url, /\/scenarios\/8591093\/run$/);
+      assert.equal(url, calendar.webhookUrl);
       assert.equal(options.method, 'POST');
-      assert.equal(options.headers.Authorization, 'Token test-token');
-      const { data, responsive } = JSON.parse(options.body);
-      assert.equal(responsive, true);
-      assert.equal(data.event_id, eventId);
+      const data = JSON.parse(options.body);
+      assert.equal(data.calendar_edit, 'update');
+      assert.equal(data.calendar_event_id, eventId);
+      const signed = [data.calendar_sent_at, data.calendar_event_id, data.calendar_patch].join('|');
+      assert.equal(data.calendar_signature,
+        createHmac('sha256', calendar.signingKey).update(signed).digest('hex'));
       const patch = JSON.parse(data.calendar_patch);
       assert.deepEqual(patch.start, { dateTime: request.data.start, timeZone: 'Asia/Jerusalem' });
       assert.equal(patch.end.dateTime, '2026-11-16T10:45:00.000Z');
@@ -84,7 +91,7 @@ test('missing and legacy invalid IDs leave Calendar and Firestore untouched', as
   for (const id of [null, 'Scenario failed to complete.']) {
     const { db, appointment, records } = fixture({ eventId: id });
     await assert.rejects(rescheduleAppointment(request, {
-      db, token: 'test-token', fetchImpl: () => assert.fail('unexpected Calendar call')
+      db, calendar, fetchImpl: () => assert.fail('unexpected Calendar call')
     }), { reason: 'event-id-missing' });
     assert.equal(records.get('appointments/fixture'), appointment);
     assert.equal(records.size, 1);
@@ -99,14 +106,14 @@ test('a stale edit, cancelled appointment or issued receipt cannot change the ca
   ]) {
     const { db } = fixture(changes);
     await assert.rejects(rescheduleAppointment(request, {
-      db, token: 'test-token', fetchImpl: () => assert.fail('unexpected Calendar call')
+      db, calendar, fetchImpl: () => assert.fail('unexpected Calendar call')
     }), { reason: expected });
   }
 });
 
 test('non-admin requests cannot access either system', async () => {
   await assert.rejects(rescheduleAppointment({ ...request, auth: { token: {} } }, {
-    db: { doc: () => assert.fail('unexpected Firestore access') }, token: 'test-token',
+    db: { doc: () => assert.fail('unexpected Firestore access') }, calendar,
     fetchImpl: () => assert.fail('unexpected Calendar call')
   }), { reason: 'admin-required' });
 });
@@ -114,12 +121,12 @@ test('non-admin requests cannot access either system', async () => {
 test('an unconfirmed calendar update never saves the appointment', async () => {
   for (const fetchImpl of [
     async () => ({ ok: false, status: 410 }),
-    async () => ({ ok: true, json: async () => ({ status: 2, outputs: { calendar_status: 502 } }) }),
+    async () => ({ ok: true, json: async () => ({ status: 'unconfirmed' }) }),
     async () => confirmed('different-event'),
     async () => { throw new Error('timeout'); }
   ]) {
     const { appointment, db, records } = fixture();
-    await assert.rejects(rescheduleAppointment(request, { db, token: 'test-token', fetchImpl }),
+    await assert.rejects(rescheduleAppointment(request, { db, calendar, fetchImpl }),
       { reason: 'calendar-unconfirmed' });
     assert.equal(records.get('appointments/fixture'), appointment);
     assert.equal(records.has('appointment_edit_locks/fixture'), true);
@@ -133,7 +140,7 @@ test('another editor cannot send a second update while Calendar is handling the 
   let finishCalendar;
   const finish = new Promise((resolve) => { finishCalendar = resolve; });
   const saving = rescheduleAppointment(request, {
-    db, token: 'test-token',
+    db, calendar,
     fetchImpl: async () => {
       enteredCalendar();
       await finish;
@@ -143,7 +150,7 @@ test('another editor cannot send a second update while Calendar is handling the 
   await entered;
   try {
     await assert.rejects(rescheduleAppointment(request, {
-      db, token: 'test-token', fetchImpl: () => assert.fail('unexpected second Calendar call')
+      db, calendar, fetchImpl: () => assert.fail('unexpected second Calendar call')
     }), { reason: 'appointment-busy' });
   } finally {
     finishCalendar();
@@ -154,7 +161,7 @@ test('another editor cannot send a second update while Calendar is handling the 
 test('a cancellation during Calendar sync is not overwritten or reported as saved', async () => {
   const { db, appointment, records } = fixture();
   await assert.rejects(rescheduleAppointment(request, {
-    db, token: 'test-token',
+    db, calendar,
     fetchImpl: async () => {
       records.set('appointments/fixture', { ...appointment, status: 'cancelled' });
       return confirmed();
