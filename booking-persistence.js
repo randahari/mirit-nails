@@ -63,6 +63,11 @@
   // index.html loads this script before defining the original edit handler.
   // Install the calendar-backed save after the page scripts have run.
   document.addEventListener('DOMContentLoaded', () => {
+    if (window._auth) {
+      import('./customer-history.js')
+        .then(({ mountCustomerHistory }) => mountCustomerHistory())
+        .catch(error => console.error('Customer history unavailable', error));
+    }
     window.confirmEditAppt = async function() {
       const es = window._editState;
       if (es.saving || !es.apptId || !es.selectedDate || !es.selectedTime || es.services.length === 0) return;
