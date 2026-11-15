@@ -4,7 +4,7 @@
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { defineJsonSecret } = require('firebase-functions/params');
+const { defineSecret } = require('firebase-functions/params');
 const { setGlobalOptions } = require('firebase-functions/v2');
 
 // Required once, here, before any module below calls getFirestore()/getAuth()
@@ -22,7 +22,7 @@ const { issueReceipt } = require('./src/issueReceipt');
 exports.issueReceipt = issueReceipt;
 
 const { AppointmentEditError, rescheduleAppointment } = require('./src/rescheduleAppointment');
-const makeCalendarConfig = defineJsonSecret('MAKE_CALENDAR_EDIT_CONFIG');
+const makeCalendarConfig = defineSecret('MAKE_CALENDAR_EDIT_CONFIG');
 
 exports.rescheduleAppointment = onCall({
   secrets: [makeCalendarConfig],
@@ -31,7 +31,7 @@ exports.rescheduleAppointment = onCall({
   try {
     return await rescheduleAppointment(request, {
       db: getFirestore(),
-      calendar: makeCalendarConfig.value()
+      calendar: JSON.parse(makeCalendarConfig.value())
     });
   } catch (error) {
     if (error instanceof AppointmentEditError) {
