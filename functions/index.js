@@ -2,7 +2,7 @@
 'use strict';
 
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const { setGlobalOptions } = require('firebase-functions/v2');
@@ -39,4 +39,20 @@ exports.rescheduleAppointment = onCall({
     }
     throw error;
   }
+});
+
+const { parseCustomerSearch, findCustomerHistory } = require('./src/customerHistory');
+
+exports.searchCustomerHistory = onCall({ timeoutSeconds: 30 }, async (request) => {
+  if (request.auth?.token.admin !== true) {
+    throw new HttpsError('permission-denied', 'Admin authentication required');
+  }
+  const search = parseCustomerSearch(request.data?.name);
+  if (!search) throw new HttpsError('invalid-argument', 'Enter at least two characters of a customer name');
+
+  const appointments = getFirestore().collection('appointments')
+    .where('datetime', '<=', Timestamp.now())
+    .orderBy('datetime', 'desc')
+    .select('name', 'phone', 'phoneRaw', 'datetime', 'services', 'branch', 'status');
+  return findCustomerHistory(appointments.stream(), search);
 });
