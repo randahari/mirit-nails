@@ -57,3 +57,66 @@
   else root.createBookingStore = createBookingStore;
 })(typeof window !== 'undefined' ? window : globalThis);
 
+(function () {
+  if (typeof document === 'undefined') return;
+
+  // index.html loads this script before defining the original edit handler.
+  // Install the calendar-backed save after the page scripts have run.
+  document.addEventListener('DOMContentLoaded', () => {
+    window.confirmEditAppt = async function() {
+      const es = window._editState;
+      if (es.saving || !es.apptId || !es.selectedDate || !es.selectedTime || es.services.length === 0) return;
+
+      const btn = document.getElementById('edit-submit-btn');
+      es.saving = true;
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.pointerEvents = 'none';
+      btn.textContent = 'שומרת...';
+
+      try {
+        const [h, m] = es.selectedTime.split(':').map(Number);
+        const newDt = new Date(es.selectedDate);
+        newDt.setHours(h, m, 0, 0);
+
+        const { getFunctions, httpsCallable } = await import(
+          'https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js'
+        );
+        const functions = getFunctions(window._auth.app, 'europe-west1');
+        const reschedule = httpsCallable(functions, 'rescheduleAppointment');
+        await reschedule({
+          appointmentId: es.apptId,
+          expectedStart: es.appt.datetime.toMillis(),
+          expectedEdit: es.appt.editedAt?.toMillis() ?? null,
+          start: newDt.toISOString(),
+          services: es.services.join(' + '),
+          duration: es.totalDuration,
+          note: document.getElementById('edit-note').value.trim()
+        });
+
+        if (window._editState === es) hideMiritEditModal();
+        showToast('התור עודכן באפליקציה וביומן ✓');
+
+        if (document.getElementById('screen-mirit').classList.contains('active')) loadMiritDashboard();
+        if (document.getElementById('screen-mirit-appts').classList.contains('active')) loadMiritAppts();
+      } catch (error) {
+        const messages = {
+          'event-id-missing': 'לתור הזה חסר קישור ליומן Google. השינוי לא נשמר.',
+          'appointment-missing': 'התור כבר לא קיים. רענני את הרשימה.',
+          'appointment-changed': 'התור השתנה מאז שפתחת אותו. פתחי אותו מחדש.',
+          'appointment-busy': 'יש עדכון קודם לתור הזה. המתיני מעט ונסי שוב.',
+          'receipt-locked': 'אי אפשר לשנות את שעת התור לאחר הפקת קבלה או בזמן הפקתה.',
+          'calendar-unavailable': 'החיבור ליומן לא זמין כרגע. השינוי לא נשמר.',
+          'calendar-unconfirmed': 'לא התקבל אישור מיומן Google. השינוי לא נשמר באפליקציה.',
+          'calendar-updated-save-unconfirmed': 'היומן עודכן, אבל השמירה באפליקציה לא אושרה. רענני ובדקי את התור.'
+        };
+        showToast(messages[error.details?.reason] || 'לא התקבל אישור לשמירת התור. רענני ובדקי לפני ניסיון נוסף.');
+      } finally {
+        es.saving = false;
+        btn.disabled = false;
+        btn.textContent = 'שמרי שינוי';
+        checkEditForm();
+      }
+    };
+  }, { once: true });
+})();

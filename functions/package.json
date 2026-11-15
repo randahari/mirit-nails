@@ -3,7 +3,7 @@
   "description": "Server-side functions for mirit-nails — currently: Invoice4U receipt issuance.",
   "private": true,
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "scripts": {
