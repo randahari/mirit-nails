@@ -2,6 +2,9 @@
 'use strict';
 
 const { initializeApp } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const { setGlobalOptions } = require('firebase-functions/v2');
 
 // Required once, here, before any module below calls getFirestore()/getAuth()
@@ -17,3 +20,23 @@ setGlobalOptions({ region: 'europe-west1' });
 const { issueReceipt } = require('./src/issueReceipt');
 
 exports.issueReceipt = issueReceipt;
+
+const { AppointmentEditError, rescheduleAppointment } = require('./src/rescheduleAppointment');
+const makeCalendarToken = defineSecret('MAKE_CALENDAR_RUN_TOKEN');
+
+exports.rescheduleAppointment = onCall({
+  secrets: [makeCalendarToken],
+  timeoutSeconds: 70
+}, async (request) => {
+  try {
+    return await rescheduleAppointment(request, {
+      db: getFirestore(),
+      token: makeCalendarToken.value()
+    });
+  } catch (error) {
+    if (error instanceof AppointmentEditError) {
+      throw new HttpsError(error.code, error.message, { reason: error.reason });
+    }
+    throw error;
+  }
+});
